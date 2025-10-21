@@ -34,9 +34,20 @@ import networkingEvent from '../../attached_assets/generated_images/Corporate_ne
 import artEvent from '../../attached_assets/generated_images/Art_gallery_exhibition_event_0dcb9354.png';
 
 function HomePage() {
+    const { isAuthenticated, user } = useAuth();
     const [, setLocation] = useLocation();
     const { data: eventsData, isLoading } = useEvents({ status: 'published' });
     const featuredEvents = eventsData?.events?.slice(0, 3) || [];
+
+    useEffect(() => {
+        if (isAuthenticated) {
+            setLocation('/dashboard');
+        }
+    }, [isAuthenticated, setLocation]);
+
+    if (isAuthenticated) {
+        return null; 
+    }
 
     return (
         <div className="min-h-screen flex flex-col">
@@ -75,6 +86,8 @@ function HomePage() {
                                         imageUrl={event.image || businessEvent}
                                         isVirtual={event.isVirtual}
                                         organizerName={event.organizer.name}
+                                        organizerId={event.organizer._id}
+                                        currentUserId={user?.id}
                                         onRegister={() => setLocation(`/events/${event._id}`)}
                                         onViewDetails={() => setLocation(`/events/${event._id}`)}
                                     />
@@ -160,6 +173,8 @@ function EventsPage() {
                             imageUrl={event.image || businessEvent}
                             isVirtual={event.isVirtual}
                             organizerName={event.organizer.name}
+                            organizerId={event.organizer._id}
+                            currentUserId={user?.id}
                             onRegister={() => setLocation(`/events/${event._id}`)}
                             onViewDetails={() => setLocation(`/events/${event._id}`)}
                         />
@@ -351,6 +366,7 @@ function EventDetailsPage({ params }: { params: { id: string } }) {
 }
 
 function AttendeeDashboard() {
+    const { user } = useAuth();
     const { data: registrationsData, isLoading } = useMyRegistrations();
     const registrations = registrationsData?.registrations || [];
 
@@ -396,6 +412,8 @@ function AttendeeDashboard() {
                                 imageUrl={registration.event.image || businessEvent}
                                 isVirtual={registration.event.isVirtual}
                                 organizerName={registration.event.organizer.name}
+                                organizerId={registration.event.organizer._id}
+                                currentUserId={user?.id}
                                 onRegister={() => { }}
                                 onViewDetails={() => window.location.href = `/events/${registration.event._id}`}
                             />

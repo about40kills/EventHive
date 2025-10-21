@@ -18,6 +18,8 @@ interface EventCardProps {
   imageUrl?: string;
   isVirtual?: boolean;
   organizerName: string;
+  organizerId?: string;
+  currentUserId?: string;
   onRegister?: (id: string) => void;
   onViewDetails?: (id: string) => void;
 }
@@ -36,11 +38,18 @@ export function EventCard({
   imageUrl,
   isVirtual,
   organizerName,
+  organizerId,
+  currentUserId,
   onRegister,
   onViewDetails,
 }: EventCardProps) {
   const spotsLeft = capacity - registeredCount;
   const percentFull = (registeredCount / capacity) * 100;
+
+  //show both buttons when:
+  //there's no authenticated user(currentUserId == null)
+  //the authenticated user is not the organizer of the event(currentUserId == attendeeId)
+  const showBothButtons = !currentUserId || !organizerId || currentUserId !== organizerId;
 
   return (
     <Card className="overflow-hidden hover-elevate transition-all duration-200 flex flex-col h-full" data-testid={`card-event-${id}`}>
@@ -113,13 +122,14 @@ export function EventCard({
       <CardFooter className="flex gap-2">
         <Button
           variant="outline"
-          className="flex-1"
+          className={showBothButtons ? "flex-1" : "w-full"}
           onClick={() => onViewDetails?.(id)}
           data-testid={`button-view-details-${id}`}
         >
           View Details
         </Button>
-        <Button
+        {showBothButtons && (
+          <Button
           className="flex-1"
           onClick={() => onRegister?.(id)}
           disabled={spotsLeft === 0}
@@ -127,6 +137,7 @@ export function EventCard({
         >
           {spotsLeft === 0 ? 'Full' : 'Register'}
         </Button>
+        )}
       </CardFooter>
     </Card>
   );
