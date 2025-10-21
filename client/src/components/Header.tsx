@@ -22,8 +22,13 @@ export function Header({ isAuthenticated = false, userRole, userName, onLogout }
 
   const handleLogout = () => {
     onLogout?.();
-    setLocation('/login');
+    setLocation('/');
   };
+
+
+  const handleLogoClick = () => {
+    window.location.reload();
+  }
 
   const navItems = [
     { label: 'Events', path: '/events' },
@@ -65,12 +70,12 @@ export function Header({ isAuthenticated = false, userRole, userName, onLogout }
     <header className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-xl">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between gap-4">
-          <Link href="/">
-            <div className="flex items-center gap-2 hover-elevate rounded-lg px-3 py-2" data-testid="link-home">
+
+            <div onClick={handleLogoClick} className="flex items-center gap-2 hover-elevate rounded-lg px-3 py-2" data-testid="link-home">
               <Calendar className="h-6 w-6 text-primary" />
               <span className="text-xl font-bold">EventHive</span>
             </div>
-          </Link>
+          
 
           <nav className="hidden md:flex items-center gap-2">
             <NavLinks />
