@@ -12,8 +12,16 @@ const createEvent = async (req, res) => {
 
     const eventData = {
       ...req.body,
-      organizer: req.user._id // only the organizer is aunthenticated user for events
+      organizer: req.user._id // only the organizer is authenticated user for events
     };
+
+    // Validate Base64 image if provided
+    if (eventData.image) {
+      if (!eventData.image.startsWith('data:image/')) {
+        return res.status(400).json({ message: 'Invalid image format. Must be a Base64 encoded image.' });
+      }
+    }
+
     const event = await Event.create(eventData);
     await event.populate('organizer', 'name email');
 
@@ -30,10 +38,10 @@ const createEvent = async (req, res) => {
 //routes GET /api/events
 const getAllEvents = async (req, res) => {
   try {
-    const { search, category, eventType, status } = req.query;
+    const { search, category, eventType, status, upcoming } = req.query;
     let query = {};
 
-    // Build query 
+    // Build query
     if (search) {
       query.$text = { $search: search };
     }
@@ -45,6 +53,11 @@ const getAllEvents = async (req, res) => {
     }
     if (status) {
       query.status = status;
+    }
+
+    // Filter for upcoming events only
+    if (upcoming === 'true') {
+      query.date = { $gte: new Date() };
     }
 
     // Filter out private events unless user is authenticated
@@ -105,9 +118,16 @@ const updateEvent = async (req, res) => {
       return res.status(403).json({ message: 'Not authorized to update this event' });
     }
 
+    const updateData = { ...req.body };
+
+    // Validate Base64 image if provided
+    if (updateData.image && !updateData.image.startsWith('data:image/')) {
+      return res.status(400).json({ message: 'Invalid image format. Must be a Base64 encoded image.' });
+    }
+
     const updatedEvent = await Event.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      updateData,
       { new: true, runValidators: true }
     ).populate('organizer', 'name email');
 

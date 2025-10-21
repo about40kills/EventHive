@@ -126,7 +126,13 @@ const getMe = async (req, res) => {
   try {
     res.json({
       success: true,
-      user: req.user
+      user: {
+        id: req.user._id,
+        name: req.user.name,
+        email: req.user.email,
+        role: req.user.role,
+        organizationType: req.user.organizationType
+      }
     });
   } catch (error) {
     res.status(500).json({ message: error.message });

@@ -129,9 +129,12 @@ const getMyRegistrations = async (req, res) => {
       status: 'confirmed'
     }).populate('event');
 
+    // Filter out registrations where event was deleted (null)
+    const validRegistrations = registrations.filter(reg => reg.event !== null);
+
     res.json({
       success: true,
-      registrations
+      registrations: validRegistrations
     });
   } catch (error) {
     res.status(500).json({ message: error.message });

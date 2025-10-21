@@ -1,4 +1,5 @@
-const { Resend } = require('resend');
+const { Resend } = require("resend");
+require("dotenv").config();
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -23,14 +24,18 @@ const getEmailHeader = (eventImage = null) => {
           ">EventHive</h1>
         </div>
         
-        ${eventImage ? `
+        ${
+          eventImage
+            ? `
           <!-- Event Image -->
           <div style="border-radius: 12px; overflow: hidden; margin: 20px auto; max-width: 400px; box-shadow: 0 8px 24px rgba(0,0,0,0.2);">
             <img src="${eventImage}" 
                  alt="Event Image" 
                  style="width: 100%; height: 200px; object-fit: cover; display: block;">
           </div>
-        ` : ''}
+        `
+            : ""
+        }
       </div>
     </div>
   `;
@@ -40,7 +45,7 @@ const getEmailHeader = (eventImage = null) => {
 const sendRegistrationConfirmation = async (userEmail, eventDetails) => {
   try {
     const result = await resend.emails.send({
-      from: 'EventHive <noreply@eventhive.xyz>', 
+      from: "EventHive <noreply@eventhive.xyz>",
       to: userEmail,
       subject: `Registration Confirmed - ${eventDetails.title}`,
       html: `
@@ -49,15 +54,28 @@ const sendRegistrationConfirmation = async (userEmail, eventDetails) => {
           
           <div style="padding: 0 30px;">
             <h2 style="color: #333; font-size: 28px; margin-bottom: 10px;">Registration Confirmed! 🎉</h2>
-            <p style="font-size: 16px; color: #666; line-height: 1.6;">Thank you for registering for <strong>${eventDetails.title}</strong></p>
+            <p style="font-size: 16px; color: #666; line-height: 1.6;">Thank you for registering for <strong>${
+              eventDetails.title
+            }</strong></p>
             
             <div style="background-color: #f8f9ff; padding: 25px; border-radius: 12px; margin: 25px 0; border-left: 4px solid #667eea;">
               <h3 style="margin-top: 0; color: #333; font-size: 20px;">Event Details:</h3>
               <div style="line-height: 1.8;">
-                <p style="margin: 8px 0;"><strong>📅 Date:</strong> ${new Date(eventDetails.date).toLocaleDateString()}</p>
-                <p style="margin: 8px 0;"><strong>🕒 Time:</strong> ${eventDetails.time || new Date(eventDetails.date).toLocaleTimeString()}</p>
-                <p style="margin: 8px 0;"><strong>📍 Location:</strong> ${eventDetails.location}</p>
-                ${eventDetails.description ? `<p style="margin: 8px 0;"><strong>📝 Description:</strong> ${eventDetails.description}</p>` : ''}
+                <p style="margin: 8px 0;"><strong>📅 Date:</strong> ${new Date(
+                  eventDetails.date
+                ).toLocaleDateString()}</p>
+                <p style="margin: 8px 0;"><strong>🕒 Time:</strong> ${
+                  eventDetails.time ||
+                  new Date(eventDetails.date).toLocaleTimeString()
+                }</p>
+                <p style="margin: 8px 0;"><strong>📍 Location:</strong> ${
+                  eventDetails.location
+                }</p>
+                ${
+                  eventDetails.description
+                    ? `<p style="margin: 8px 0;"><strong>📝 Description:</strong> ${eventDetails.description}</p>`
+                    : ""
+                }
               </div>
             </div>
             
@@ -73,13 +91,16 @@ const sendRegistrationConfirmation = async (userEmail, eventDetails) => {
             </div>
           </div>
         </div>
-      `
+      `,
     });
 
-    console.log('Registration confirmation email sent successfully:', result.id);
+    console.log(
+      "Registration confirmation email sent successfully:",
+      result.id
+    );
     return result;
   } catch (error) {
-    console.error('Error sending registration confirmation email:', error);
+    console.error("Error sending registration confirmation email:", error);
     throw error;
   }
 };
@@ -88,7 +109,7 @@ const sendRegistrationConfirmation = async (userEmail, eventDetails) => {
 const sendEventReminder = async (userEmail, eventDetails) => {
   try {
     const result = await resend.emails.send({
-      from: 'EventHive <noreply@eventhive.xyz>',
+      from: "EventHive <noreply@eventhive.xyz>",
       to: userEmail,
       subject: `Reminder: ${eventDetails.title} Tomorrow`,
       html: `
@@ -100,11 +121,20 @@ const sendEventReminder = async (userEmail, eventDetails) => {
             <p style="font-size: 16px; color: #666; line-height: 1.6;">This is a friendly reminder that you have an event tomorrow!</p>
             
             <div style="background: linear-gradient(135deg, #ff6b6b 0%, #ffa500 100%); padding: 25px; border-radius: 12px; margin: 25px 0; color: white; text-align: center;">
-              <h3 style="margin-top: 0; font-size: 22px;">${eventDetails.title}</h3>
+              <h3 style="margin-top: 0; font-size: 22px;">${
+                eventDetails.title
+              }</h3>
               <div style="background: rgba(255,255,255,0.2); padding: 15px; border-radius: 8px; margin-top: 15px;">
-                <p style="margin: 5px 0;"><strong>📅 ${new Date(eventDetails.date).toLocaleDateString()}</strong></p>
-                <p style="margin: 5px 0;"><strong>🕒 ${eventDetails.time || new Date(eventDetails.date).toLocaleTimeString()}</strong></p>
-                <p style="margin: 5px 0;"><strong>📍 ${eventDetails.location}</strong></p>
+                <p style="margin: 5px 0;"><strong>📅 ${new Date(
+                  eventDetails.date
+                ).toLocaleDateString()}</strong></p>
+                <p style="margin: 5px 0;"><strong>🕒 ${
+                  eventDetails.time ||
+                  new Date(eventDetails.date).toLocaleTimeString()
+                }</strong></p>
+                <p style="margin: 5px 0;"><strong>📍 ${
+                  eventDetails.location
+                }</strong></p>
               </div>
             </div>
             
@@ -120,13 +150,13 @@ const sendEventReminder = async (userEmail, eventDetails) => {
             </div>
           </div>
         </div>
-      `
+      `,
     });
 
-    console.log('Event reminder email sent successfully:', result.id);
+    console.log("Event reminder email sent successfully:", result);
     return result;
   } catch (error) {
-    console.error('Error sending event reminder email:', error);
+    console.error("Error sending event reminder email:", error);
     throw error;
   }
 };
@@ -135,9 +165,9 @@ const sendEventReminder = async (userEmail, eventDetails) => {
 const sendPasswordResetEmail = async (userEmail, userName, resetURL) => {
   try {
     const result = await resend.emails.send({
-      from: 'EventHive <noreply@eventhive.xyz>',
+      from: "EventHive <noreply@eventhive.xyz>",
       to: userEmail,
-      subject: 'EventHive Password Reset Request',
+      subject: "EventHive Password Reset Request",
       html: `
         <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff;">
           ${getEmailHeader()}
@@ -175,13 +205,13 @@ const sendPasswordResetEmail = async (userEmail, userName, resetURL) => {
             </div>
           </div>
         </div>
-      `
+      `,
     });
 
-    console.log('Password reset email sent successfully:', result.id);
+    console.log("Password reset email sent successfully:", result.id);
     return result;
   } catch (error) {
-    console.error('Error sending password reset email:', error);
+    console.error("Error sending password reset email:", error);
     throw error;
   }
 };
@@ -190,17 +220,17 @@ const sendPasswordResetEmail = async (userEmail, userName, resetURL) => {
 const sendEmail = async ({ email, subject, message }) => {
   try {
     const result = await resend.emails.send({
-      from: 'EventHive <noreply@eventhive.xyz>',
+      from: "EventHive <noreply@eventhive.xyz>",
       to: email,
       subject: subject,
-      html: message
+      html: message,
     });
 
-    console.log('Email sent successfully:', result.id);
+    console.log("Email sent successfully:", result.id);
     return result;
   } catch (error) {
-    console.error('Email send error:', error);
-    throw new Error('Failed to send email');
+    console.error("Email send error:", error);
+    throw new Error("Failed to send email");
   }
 };
 
@@ -208,5 +238,5 @@ module.exports = {
   sendRegistrationConfirmation,
   sendEventReminder,
   sendPasswordResetEmail,
-  sendEmail
+  sendEmail,
 };
