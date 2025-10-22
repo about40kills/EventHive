@@ -25,6 +25,7 @@ import { useToast } from "./hooks/use-toast";
 import { useEvents, useEvent, useMyEvents, useDeleteEvent } from "./hooks/useEvents";
 import { useMyRegistrations, useRegisterForEvent, useCancelRegistration } from "./hooks/useRegistrations";
 import type { EventFilters as EventFiltersType } from "./types/api";
+import { EditEventForm } from "./components/EditEventForm";
 
 // Import event images
 import businessEvent from '../../attached_assets/generated_images/Business_conference_presentation_event_e6f329f2.png';
@@ -428,7 +429,7 @@ function AttendeeDashboard() {
 function OrganizerDashboard() {
     const [, setLocation] = useLocation();
     const { data: eventsData, isLoading } = useMyEvents();
-    const deteMutation = useDeleteEvent();
+    const deleteMutation = useDeleteEvent();
     const { toast } = useToast();
     const events = eventsData?.events || [];
 
@@ -441,7 +442,34 @@ function OrganizerDashboard() {
         capacity: e.capacity,
     }));
 
+    const handleEdit = (eventId: string) => {
+        setLocation(`/events/edit/${eventId}`);
+    };
 
+    const handleDelete = async (eventId: string) => {
+        if (!window.confirm('Are you sure you want to delete this event? This action cannot be undone.')) {
+            return;
+        }
+
+        try {
+            await deleteMutation.mutateAsync(eventId);
+            toast({
+                title: "Event deleted",
+                description: "Your event has been successfully deleted.",
+            });
+        } catch (error) {
+            console.error('Delete failed:', error);
+            toast({
+                title: "Delete failed",
+                description: "Failed to delete the event. Please try again.",
+                variant: "destructive",
+            });
+        }
+    };
+
+    const handleViewAttendees = (eventId: string) => {
+        setLocation(`/events/${eventId}/attendees`);
+    };
 
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
@@ -476,9 +504,9 @@ function OrganizerDashboard() {
                 ) : (
                     <EventManagementTable
                         events={organizerEvents}
-                        onEdit={(id) => setLocation(`/events/${id}/edit`)}
-                        onDelete={(id) => console.log('Delete event:', id)}
-                        onViewAttendees={(id) => setLocation(`/events/${id}/attendees`)}
+                        onEdit={handleEdit}
+                        onDelete={handleDelete}
+                        onViewAttendees={handleViewAttendees}
                     />
                 )}
             </div>
@@ -532,6 +560,10 @@ function Router() {
                     <Route path="/reset-password/:token">
                         {(params) => <ResetPasswordForm token={params.token} />}
                     </Route>
+                    <Route 
+                      path="/events/edit/:id" 
+                      component={(props: any) => <EditEventForm eventId={props.params.id} />} 
+                    />
                     <Route>
                         <div className="flex-1 flex items-center justify-center">
                             <div className="text-center">

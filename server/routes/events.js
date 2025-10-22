@@ -5,15 +5,16 @@ const {
   getEventById,
   updateEvent,
   deleteEvent,
-  getMyEvents
+  getMyEvents,
+  upload
 } = require('../controllers/eventController');
 const { protect } = require('../middleware/auth');
 
 const router = express.Router();
 
 // Protected routes
-router.post('/', protect, createEvent);
-router.put('/:id', protect, updateEvent);
+router.post('/', protect, upload, createEvent); 
+router.put('/:id', protect, upload, updateEvent);
 router.delete('/:id', protect, deleteEvent);
 router.get('/my-events', protect, getMyEvents);
 

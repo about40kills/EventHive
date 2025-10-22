@@ -1,10 +1,38 @@
 const Event = require('../models/Event');
 const { validationResult } = require('express-validator');
+const path = require('path');
+const multer = require('multer'); 
+
+//configure multer for file uploads
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'uploads/events/');
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, 'event-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({ 
+  storage: storage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only images are allowed.'), false);
+    }
+  }
+});
 
 // Create event
 //routes POST /api/events
 const createEvent = async (req, res) => {
   try {
+    console.log('Request body:', req.body);
+    console.log('Uploaded file:', req.file); // Check if file is being received
+
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
@@ -15,21 +43,25 @@ const createEvent = async (req, res) => {
       organizer: req.user._id // only the organizer is authenticated user for events
     };
 
-    // Validate Base64 image if provided
-    if (eventData.image) {
-      if (!eventData.image.startsWith('data:image/')) {
-        return res.status(400).json({ message: 'Invalid image format. Must be a Base64 encoded image.' });
-      }
+    // Handle file upload
+    if (req.file) {
+      eventData.image = `/uploads/events/${req.file.filename}`;
+      console.log('Image path saved to DB:', eventData.image); // Debug log
     }
 
+    console.log('Event data before saving:', eventData);
+    
     const event = await Event.create(eventData);
     await event.populate('organizer', 'name email');
+
+    console.log('Created event with image:', event.image); // Debug log
 
     res.status(201).json({
       success: true,
       event
     });
   } catch (error) {
+    console.error('Create event error:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -68,6 +100,15 @@ const getAllEvents = async (req, res) => {
     const events = await Event.find(query)
       .populate('organizer', 'name email')
       .sort({ date: -1 });
+
+    // Debug: Check if images are in the database
+    events.forEach(event => {
+      if (event.image) {
+        console.log(`Event "${event.title}" has image: ${event.image}`);
+      } else {
+        console.log(`Event "${event.title}" has NO image`);
+      }
+    });
 
     res.json({
       success: true,
@@ -120,16 +161,18 @@ const updateEvent = async (req, res) => {
 
     const updateData = { ...req.body };
 
-    // Validate Base64 image if provided
-    if (updateData.image && !updateData.image.startsWith('data:image/')) {
-      return res.status(400).json({ message: 'Invalid image format. Must be a Base64 encoded image.' });
+    // Handle file upload for images
+    if (req.file) {
+      updateData.image = `/uploads/events/${req.file.filename}`;
     }
+
 
     const updatedEvent = await Event.findByIdAndUpdate(
       req.params.id,
       updateData,
       { new: true, runValidators: true }
     ).populate('organizer', 'name email');
+
 
     res.json({
       success: true,
@@ -189,5 +232,6 @@ module.exports = {
   getEventById,
   updateEvent,
   deleteEvent,
-  getMyEvents
+  getMyEvents,
+  upload: upload.single('image')
 };

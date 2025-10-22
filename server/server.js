@@ -2,6 +2,8 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const connectDB = require("./config/db");
+const path = require('path');
+const fs = require('fs');
 
 // Import routes
 const authRoutes = require("./routes/auth");
@@ -17,6 +19,15 @@ connectDB();
 app.use(cors());
 app.use(express.json({ limit: '10mb' })); // Increased limit for Base64 images
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Create uploads directory if it doesn't exist
+const uploadsDir = path.join(__dirname, 'uploads/events');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+// Serve static files
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Routes
 app.use("/api/auth", authRoutes);
