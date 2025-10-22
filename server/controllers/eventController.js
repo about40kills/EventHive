@@ -2,6 +2,7 @@ const Event = require('../models/Event');
 const { validationResult } = require('express-validator');
 const path = require('path');
 const multer = require('multer'); 
+const Registration = require('../models/Registration'); 
 
 //configure multer for file uploads
 const storage = multer.diskStorage({
@@ -226,6 +227,63 @@ const getMyEvents = async (req, res) => {
   }
 };
 
+// Get event attendees
+//routes GET /api/events/:id/attendees
+const getEventAttendees = async (req, res) => {
+  try {
+    const eventId = req.params.id;
+    const userId = req.user._id;
+
+    // First, check if the event exists and user is the organizer
+    const event = await Event.findById(eventId);
+    if (!event) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Event not found' 
+      });
+    }
+
+    // Check if the current user is the organizer of this event
+    if (event.organizer.toString() !== userId.toString()) {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Not authorized to view attendees for this event' 
+      });
+    }
+
+    // Fetch attendees (registrations for this event)
+    const registrations = await Registration.find({ 
+      event: eventId,
+      status: { $ne: 'cancelled' } // Exclude cancelled registrations
+    })
+    .populate('user', 'name email phone avatar')
+    .sort({ registrationDate: -1 });
+
+    // Format the attendees data
+    const attendees = registrations.map(registration => ({
+      _id: registration.user._id,
+      name: registration.user.name,
+      email: registration.user.email,
+      phone: registration.user.phone,
+      registrationDate: registration.registrationDate,
+      status: registration.status,
+      avatar: registration.user.avatar
+    }));
+
+    res.json({
+      success: true,
+      attendees: attendees,
+      totalCount: attendees.length
+    });
+  } catch (error) {
+    console.error('Error fetching event attendees:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Server error while fetching attendees' 
+    });
+  }
+};
+
 module.exports = {
   createEvent,
   getAllEvents,
@@ -233,5 +291,6 @@ module.exports = {
   updateEvent,
   deleteEvent,
   getMyEvents,
-  upload: upload.single('image')
+  upload: upload.single('image'),
+  getEventAttendees
 };

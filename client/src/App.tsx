@@ -17,6 +17,7 @@ import { EventManagementTable } from "./components/EventManagementTable";
 import { CreateEventForm } from "./components/CreateEventForm";
 import { ForgotPasswordForm } from "./components/ForgotPasswordForm";
 import { ResetPasswordForm } from "./components/ResetPasswordForm";
+import { ConfirmationDialog } from "./components/ConfirmationDialog";
 import { About } from "./pages/About";
 import { Button } from "./components/ui/button";
 import { useState, useEffect } from "react";
@@ -26,6 +27,7 @@ import { useEvents, useEvent, useMyEvents, useDeleteEvent } from "./hooks/useEve
 import { useMyRegistrations, useRegisterForEvent, useCancelRegistration } from "./hooks/useRegistrations";
 import type { EventFilters as EventFiltersType } from "./types/api";
 import { EditEventForm } from "./components/EditEventForm";
+import { EventAttendeesPage } from "./components/EventAttendeesPage";
 
 // Import event images
 import businessEvent from '../../attached_assets/generated_images/Business_conference_presentation_event_e6f329f2.png';
@@ -214,6 +216,7 @@ function EventDetailsPage({ params }: { params: { id: string } }) {
     const cancelMutation = useCancelRegistration();
     const deleteMutation = useDeleteEvent();
     const { toast } = useToast();
+    const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
     if (isLoading) {
         return (
@@ -284,10 +287,6 @@ function EventDetailsPage({ params }: { params: { id: string } }) {
     };
 
     const handleDeleteEvent = async () => {
-        if (!window.confirm('Are you sure you want to delete this event? This action cannot be undone.')) {
-            return;
-        }
-
         try {
             await deleteMutation.mutateAsync(event._id);
             toast({
@@ -302,6 +301,8 @@ function EventDetailsPage({ params }: { params: { id: string } }) {
                 description: "Failed to delete the event. Please try again.",
                 variant: "destructive",
             });
+        } finally {
+            setShowDeleteDialog(false);
         }
     };
 
@@ -360,7 +361,17 @@ function EventDetailsPage({ params }: { params: { id: string } }) {
                 eventAction={eventAction}
                 onRegister={handleRegister}
                 onCancelRegistration={handleCancelRegistration}
-                onDeleteEvent={handleDeleteEvent}
+                onDeleteEvent={() => setShowDeleteDialog(true)}
+            />
+
+            <ConfirmationDialog
+                open={showDeleteDialog}
+                onOpenChange={setShowDeleteDialog}
+                title="Delete Event"
+                description="Are you sure you want to delete this event? This action cannot be undone and all registrations will be lost."
+                confirmText="Delete Event"
+                onConfirm={handleDeleteEvent}
+                isLoading={deleteMutation.isPending}
             />
         </div>
     );
@@ -432,6 +443,7 @@ function OrganizerDashboard() {
     const deleteMutation = useDeleteEvent();
     const { toast } = useToast();
     const events = eventsData?.events || [];
+    const [deleteEventId, setDeleteEventId] = useState<string | null>(null);
 
     const organizerEvents = events.map(e => ({
         id: e._id,
@@ -446,13 +458,11 @@ function OrganizerDashboard() {
         setLocation(`/events/edit/${eventId}`);
     };
 
-    const handleDelete = async (eventId: string) => {
-        if (!window.confirm('Are you sure you want to delete this event? This action cannot be undone.')) {
-            return;
-        }
+    const handleDeleteConfirm = async () => {
+        if (!deleteEventId) return;
 
         try {
-            await deleteMutation.mutateAsync(eventId);
+            await deleteMutation.mutateAsync(deleteEventId);
             toast({
                 title: "Event deleted",
                 description: "Your event has been successfully deleted.",
@@ -464,12 +474,20 @@ function OrganizerDashboard() {
                 description: "Failed to delete the event. Please try again.",
                 variant: "destructive",
             });
+        } finally {
+            setDeleteEventId(null);
         }
+    };
+
+    const handleDelete = (eventId: string) => {
+        setDeleteEventId(eventId);
     };
 
     const handleViewAttendees = (eventId: string) => {
         setLocation(`/events/${eventId}/attendees`);
     };
+
+    const selectedEvent = events.find(e => e._id === deleteEventId);
 
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
@@ -510,6 +528,16 @@ function OrganizerDashboard() {
                     />
                 )}
             </div>
+
+            <ConfirmationDialog
+                open={!!deleteEventId}
+                onOpenChange={(open) => !open && setDeleteEventId(null)}
+                title="Delete Event"
+                description={`Are you sure you want to delete "${selectedEvent?.title}"? This action cannot be undone!`}
+                confirmText="Delete Event"
+                onConfirm={handleDeleteConfirm}
+                isLoading={deleteMutation.isPending}
+            />
         </div>
     );
 }
@@ -544,6 +572,13 @@ function Router() {
                 <Switch>
                     <Route path="/" component={HomePage} />
                     <Route path="/events" component={EventsPage} />
+                    <Route
+                        path="/events/:id/edit"
+                        component={(props: { params: { id: string } }) => (
+                            <EditEventForm eventId={props.params.id} />
+                        )}
+                    />
+                    <Route path="/events/:id/attendees" component={EventAttendeesPage} />
                     <Route path="/events/:id" component={EventDetailsPage} />
                     <Route path="/about" component={About} />
                     <Route path="/login">

@@ -11,7 +11,25 @@ export const eventKeys = {
   details: () => [...eventKeys.all, "detail"] as const,
   detail: (id: string) => [...eventKeys.details(), id] as const,
   myEvents: () => [...eventKeys.all, "my-events"] as const,
+  attendees: (id: string) => [...eventKeys.detail(id), "attendees"] as const,
 };
+
+// Attendee interface
+interface Attendee {
+  _id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  registrationDate: string;
+  status?: 'confirmed' | 'pending' | 'cancelled';
+  avatar?: string;
+}
+
+interface EventAttendeesResponse {
+  success: boolean;
+  attendees: Attendee[];
+  totalCount: number;
+}
 
 // Get all events with optional filters
 export function useEvents(filters?: EventFilters) {
@@ -39,6 +57,36 @@ export function useMyEvents() {
     queryKey: eventKeys.myEvents(),
     queryFn: () => apiClient.getMyEvents(),
     enabled: user?.role === 'organizer',
+  });
+}
+
+// Get event attendees
+export function useEventAttendees(eventId: string) {
+  return useQuery({
+    queryKey: eventKeys.attendees(eventId),
+    queryFn: async (): Promise<EventAttendeesResponse> => {
+      
+      try {
+        const response = await apiClient.getEventAttendees(eventId);
+        const mappedAttendees = response.attendees.map((attendee: any) => ({
+          _id: attendee._id ?? attendee.email, 
+          name: attendee.name,
+          email: attendee.email,
+          phone: attendee.phone,
+          registrationDate: attendee.registrationDate,
+          status: attendee.status,
+          avatar: attendee.avatar,
+        }));
+        return {
+          ...response,
+          attendees: mappedAttendees,
+        };
+      } catch (error) {
+        throw error;
+      }
+    },
+    enabled: !!eventId,
+    staleTime: 2 * 60 * 1000, // 2 minutes
   });
 }
 
