@@ -22,10 +22,12 @@ class ApiClient {
     this.token = localStorage.getItem("authToken");
   }
 
-  private getHeaders(): HeadersInit {
-    const headers: HeadersInit = {
-      "Content-Type": "application/json",
-    };
+  private getHeaders(includeContentType = true): HeadersInit {
+    const headers: HeadersInit = {};
+
+    if (includeContentType) {
+      headers["Content-Type"] = "application/json";
+    }
 
     if (this.token) {
       headers.Authorization = `Bearer ${this.token}`;
@@ -39,8 +41,12 @@ class ApiClient {
     options: RequestInit = {}
   ): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`;
+
+  
+    const isFormData = options.body instanceof FormData;
+
     const config: RequestInit = {
-      headers: this.getHeaders(),
+      headers: this.getHeaders(!isFormData),
       ...options,
     };
 
@@ -118,10 +124,20 @@ class ApiClient {
     return this.request<EventResponse>(`/events/${id}`);
   }
 
-  async createEvent(eventData: CreateEventForm): Promise<EventResponse> {
+  async createEvent(eventData: CreateEventForm | FormData): Promise<EventResponse> {
+    let body: string | FormData;
+
+    if (eventData instanceof FormData) {
+      // If FormData is passed directly, use it
+      body = eventData;
+    } else {
+      // Convert to JSON for regular data
+      body = JSON.stringify(eventData);
+    }
+
     return this.request<EventResponse>("/events", {
       method: "POST",
-      body: JSON.stringify(eventData),
+      body,
     });
   }
 

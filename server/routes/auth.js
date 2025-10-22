@@ -30,4 +30,16 @@ router.post('/forgot-password', forgotPassword);
 router.get('/verify-reset-token/:token', verifyResetToken);
 router.post('/reset-password', resetPassword);
 
+router.get('/me', protect, async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).select('-password');
+    res.json({
+      success: true,
+      user
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 module.exports = router;

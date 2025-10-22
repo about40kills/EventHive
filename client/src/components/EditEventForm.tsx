@@ -1,22 +1,15 @@
+import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Calendar, Upload, X } from "lucide-react";
-import { useState, useEffect } from "react";
-import { useLocation } from "wouter";
-import { useCreateEvent } from "../hooks/useEvents"; 
 import { useToast } from "@/hooks/use-toast";
-import type { CreateEventForm as CreateEventFormType } from "../types/api";
-
-interface CreateEventFormProps {
-  onSubmit?: (data: EventFormData) => void;
-  initialData?: Partial<EventFormData>;
-  isLoading?: boolean;
-}
+import { ArrowLeft, Upload, X, Calendar } from "lucide-react";
+import { useLocation } from "wouter";
+import { apiClient } from "@/lib/api";
 
 export interface EventFormData {
   title: string;
@@ -35,6 +28,10 @@ export interface EventFormData {
   image?: File;
 }
 
+interface EditEventFormProps {
+  eventId: string;
+}
+
 const categories = [
   'Technology',
   'Business',
@@ -45,76 +42,135 @@ const categories = [
   'Networking',
 ];
 
-export function CreateEventForm({ onSubmit, initialData, isLoading }: CreateEventFormProps) {
-  const [formData, setFormData] = useState<EventFormData>({
-    title: initialData?.title || '',
-    description: initialData?.description || '',
-    category: initialData?.category || '',
-    eventType: initialData?.eventType || 'public',
-    date: initialData?.date || '',
-    time: initialData?.time || '',
-    location: initialData?.location || '',
-    capacity: initialData?.capacity || 50,
-    isVirtual: initialData?.isVirtual || false,
-    isPrivate: initialData?.isPrivate || false,
-    accessCode: initialData?.accessCode || '',
-    allowedDomains: initialData?.allowedDomains || '',
-    tags: initialData?.tags || '',
-  });
-
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
-  const createEventMutation = useCreateEvent();
+export function EditEventForm({ eventId }: EditEventFormProps) {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [fetchingEvent, setFetchingEvent] = useState(true);
+  const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  
+  const [formData, setFormData] = useState<EventFormData>({
+    title: '',
+    description: '',
+    category: '',
+    eventType: 'public',
+    date: '',
+    time: '',
+    location: '',
+    capacity: 50,
+    isVirtual: false,
+    isPrivate: false,
+    accessCode: '',
+    allowedDomains: '',
+    tags: '',
+  });
 
-  // Check authentication on component mount
+  // Fetch existing event data
   useEffect(() => {
-    const checkAuth = async () => {
-      const token = localStorage.getItem('authToken'); // Changed from 'token' to 'authToken'
-      
-      if (!token) {
-        toast({
-          title: "Authentication required",
-          description: "Please log in to create an event.",
-          variant: "destructive",
-        });
-        setLocation('/login');
-        return;
-      }
-
+    const fetchEvent = async () => {
       try {
-        // Verify token is still valid
-        const response = await fetch('http://localhost:3001/api/auth/me', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-
-        if (!response.ok) {
-          // Token is invalid
-          localStorage.removeItem('authToken'); // Changed from 'token' to 'authToken'
+        
+        if (!apiClient.isAuthenticated()) {
+          
           toast({
-            title: "Session expired",
-            description: "Please log in again to create an event.",
+            title: "Error",
+            description: "Please log in to edit events",
             variant: "destructive",
           });
           setLocation('/login');
           return;
         }
 
-        // User is authenticated
-        setIsCheckingAuth(false);
+        const response = await apiClient.getEvent(eventId);
+        
+        if (response.success && response.event) {
+          const eventData = response.event;
+          
+          // Convert date to input format
+          const eventDate = new Date(eventData.date);
+          const formattedDate = eventDate.toISOString().split('T')[0];
+          
+          // Parse tags if they exist
+          const tagsString = eventData.tags 
+            ? (Array.isArray(eventData.tags) ? eventData.tags.join(', ') : eventData.tags)
+            : '';
+
+          // Parse access control
+          const accessControl = eventData.accessControl || {};
+          const allowedDomainsString = accessControl.allowedDomains 
+            ? (Array.isArray(accessControl.allowedDomains) ? accessControl.allowedDomains.join(', ') : accessControl.allowedDomains)
+            : '';
+          
+          setFormData({
+            title: eventData.title || '',
+            description: eventData.description || '',
+            category: eventData.category || '',
+            eventType: eventData.eventType || 'public',
+            date: formattedDate,
+            time: eventData.time || '',
+            location: eventData.location || '',
+            capacity: eventData.capacity || 50,
+            isVirtual: eventData.isVirtual || false,
+            isPrivate: accessControl.isPrivate || false,
+            accessCode: accessControl.accessCode || '',
+            allowedDomains: allowedDomainsString,
+            tags: tagsString,
+          });
+          
+          if (eventData.image) {
+            const imageUrl = eventData.image.startsWith('http') 
+              ? eventData.image 
+              : `http://localhost:3001${eventData.image}`;
+            setCurrentImageUrl(imageUrl);
+            setImagePreview(imageUrl); 
+          }
+        } else {
+          throw new Error('Failed to fetch event data');
+        }
       } catch (error) {
-        console.error('Auth check failed:', error);
-        localStorage.removeItem('authToken'); // Changed from 'token' to 'authToken'
-        setLocation('/login');
+        console.error('Fetch error:', error);
+        
+        if (error instanceof Error && error.message.includes('404')) {
+          toast({
+            title: "Event Not Found",
+            description: "The event you're trying to edit doesn't exist",
+            variant: "destructive",
+          });
+        } else if (error instanceof Error && error.message.includes('401')) {
+          toast({
+            title: "Authentication Error",
+            description: "Please log in again",
+            variant: "destructive",
+          });
+          setLocation('/login');
+          return;
+        } else {
+          toast({
+            title: "Error",
+            description: "An error occurred while fetching event details",
+            variant: "destructive",
+          });
+        }
+        setLocation('/dashboard');
+      } finally {
+        setFetchingEvent(false);
       }
     };
 
-    checkAuth();
-  }, [setLocation, toast]);
+    if (eventId) {
+      fetchEvent();
+    } else {
+      console.error('No eventId provided');
+      setFetchingEvent(false);
+      toast({
+        title: "Error",
+        description: "No event ID provided",
+        variant: "destructive",
+      });
+      setLocation('/dashboard');
+    }
+  }, [eventId, setLocation, toast]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -152,7 +208,12 @@ export function CreateEventForm({ onSubmit, initialData, isLoading }: CreateEven
 
   const removeImage = () => {
     setFormData({ ...formData, image: undefined });
-    setImagePreview(null);
+    setImagePreview(currentImageUrl); // Reset to current image if it exists, or null
+    // Reset file input
+    const fileInput = document.getElementById('image') as HTMLInputElement;
+    if (fileInput) {
+      fileInput.value = '';
+    }
   };
 
   const handleCancel = () => {
@@ -164,7 +225,7 @@ export function CreateEventForm({ onSubmit, initialData, isLoading }: CreateEven
     setIsSubmitting(true);
 
     try {
-      const token = localStorage.getItem('authToken'); // Changed from 'token' to 'authToken'
+      const token = localStorage.getItem('authToken');
       
       if (!token) {
         throw new Error('No authentication token found. Please log in again.');
@@ -183,7 +244,6 @@ export function CreateEventForm({ onSubmit, initialData, isLoading }: CreateEven
       submitData.append('location', formData.location);
       submitData.append('isVirtual', formData.isVirtual.toString());
       submitData.append('capacity', formData.capacity.toString());
-      submitData.append('status', 'published');
       
       // Handle tags
       if (formData.tags) {
@@ -206,9 +266,9 @@ export function CreateEventForm({ onSubmit, initialData, isLoading }: CreateEven
         submitData.append('image', formData.image);
       }
 
-      console.log('Making event creation request...');
-      const response = await fetch('http://localhost:3001/api/events', {
-        method: 'POST',
+      console.log('Making event update request...');
+      const response = await fetch(`http://localhost:3001/api/events/${eventId}`, {
+        method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -216,35 +276,33 @@ export function CreateEventForm({ onSubmit, initialData, isLoading }: CreateEven
       });
 
       const result = await response.json();
-      console.log('Event creation response:', result);
+      console.log('Event update response:', result);
 
       if (!response.ok) {
         if (response.status === 401) {
-          // Token expired or invalid during request
-          localStorage.removeItem('authToken'); // Changed from 'token' to 'authToken'
+          localStorage.removeItem('authToken');
           setLocation('/login');
           toast({
             title: "Session expired",
-            description: "Please log in again to create an event.",
+            description: "Please log in again to update the event.",
             variant: "destructive",
           });
           return;
         }
-        throw new Error(result.message || 'Failed to create event');
+        throw new Error(result.message || 'Failed to update event');
       }
 
       toast({
-        title: "Event created successfully!",
-        description: "Your event has been published and is now visible to users.",
+        title: "Event updated successfully!",
+        description: "Your event has been updated and changes are now visible.",
       });
 
-      onSubmit?.(formData);
-      setLocation('/events');
+      setLocation('/dashboard');
       
     } catch (error) {
-      console.error('Error creating event:', error);
+      console.error('Error updating event:', error);
       toast({
-        title: "Failed to create event",
+        title: "Failed to update event",
         description: error instanceof Error ? error.message : "Something went wrong. Please try again.",
         variant: "destructive",
       });
@@ -253,8 +311,8 @@ export function CreateEventForm({ onSubmit, initialData, isLoading }: CreateEven
     }
   };
 
-  // Show loading while checking authentication
-  if (isCheckingAuth) {
+  // Show loading while fetching event
+  if (fetchingEvent) {
     return (
       <div className="max-w-3xl mx-auto">
         <Card>
@@ -270,14 +328,25 @@ export function CreateEventForm({ onSubmit, initialData, isLoading }: CreateEven
 
   return (
     <div className="max-w-3xl mx-auto">
+      <div className="mb-6">
+        <Button
+          variant="ghost"
+          onClick={() => setLocation('/dashboard')}
+          className="mb-4"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Dashboard
+        </Button>
+      </div>
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Calendar className="h-6 w-6 text-primary" />
-            {initialData ? 'Edit Event' : 'Create New Event'}
+            Edit Event
           </CardTitle>
           <CardDescription>
-            Fill in the details to {initialData ? 'update your' : 'create a new'} event
+            Fill in the details to update your event
           </CardDescription>
         </CardHeader>
 
@@ -328,7 +397,7 @@ export function CreateEventForm({ onSubmit, initialData, isLoading }: CreateEven
                     className="flex items-center gap-2"
                   >
                     <Upload className="h-4 w-4" />
-                    Choose Image
+                    {imagePreview ? 'Change Image' : 'Choose Image'}
                   </Button>
                   <span className="text-sm text-muted-foreground">
                     Max 5MB • JPG, PNG, GIF
@@ -455,7 +524,10 @@ export function CreateEventForm({ onSubmit, initialData, isLoading }: CreateEven
                 <Switch
                   id="isVirtual"
                   checked={formData.isVirtual}
-                  onCheckedChange={(checked) => setFormData({ ...formData, isVirtual: checked })}
+                  onCheckedChange={(checked) => {
+                    console.log('Virtual switch changed:', checked);
+                    setFormData({ ...formData, isVirtual: checked });
+                  }}
                   data-testid="switch-virtual"
                 />
               </div>
@@ -468,7 +540,9 @@ export function CreateEventForm({ onSubmit, initialData, isLoading }: CreateEven
                 <Switch
                   id="isPrivate"
                   checked={formData.isPrivate}
-                  onCheckedChange={(checked) => setFormData({ ...formData, isPrivate: checked })}
+                  onCheckedChange={(checked) => {
+                    setFormData({ ...formData, isPrivate: checked });
+                  }}
                   data-testid="switch-private"
                 />
               </div>
@@ -517,10 +591,10 @@ export function CreateEventForm({ onSubmit, initialData, isLoading }: CreateEven
               <Button
                 type="submit"
                 className="flex-1"
-                disabled={isSubmitting || isLoading}
+                disabled={isSubmitting}
                 data-testid="button-submit"
               >
-                {isSubmitting ? 'Creating Event...' : initialData ? 'Update Event' : 'Create Event'}
+                {isSubmitting ? 'Updating Event...' : 'Update Event'}
               </Button>
               <Button
                 type="button"

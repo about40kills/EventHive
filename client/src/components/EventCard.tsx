@@ -43,8 +43,35 @@ export function EventCard({
   onRegister,
   onViewDetails,
 }: EventCardProps) {
+  // Add these missing calculations
   const spotsLeft = capacity - registeredCount;
   const percentFull = (registeredCount / capacity) * 100;
+
+  // Handle image URL construction
+  const getImageUrl = () => {
+
+    if (!imageUrl) return null;
+    
+    // If it's already a full URL, use it
+    if (imageUrl.startsWith('http')) {
+      return imageUrl;
+    }
+    
+    // If it's a relative path from backend, prepend server URL
+    if (imageUrl.startsWith('/uploads/')) {
+      const fullUrl = `http://localhost:3001${imageUrl}`;
+      return fullUrl;
+    }
+    
+    // If it's base64, use directly
+    if (imageUrl.startsWith('data:image/')) {
+      return imageUrl;
+    }
+    
+    return null;
+  };
+
+  const finalImageUrl = getImageUrl();
 
   //show both buttons when:
   //there's no authenticated user(currentUserId == null)
@@ -53,12 +80,21 @@ export function EventCard({
 
   return (
     <Card className="overflow-hidden hover-elevate transition-all duration-200 flex flex-col h-full" data-testid={`card-event-${id}`}>
-      {imageUrl && (
+      {/* Only show image if we have a valid URL */}
+      {finalImageUrl && (
         <div className="relative aspect-video overflow-hidden">
           <img
-            src={imageUrl}
+            src={finalImageUrl}
             alt={title}
-            className="w-full h-full object-cover"
+            onError={(e) => {
+              console.error('Failed to load image:', finalImageUrl);
+              // Hide the image container if it fails to load
+              const imageContainer = e.currentTarget.parentElement;
+              if (imageContainer) {
+                imageContainer.style.display = 'none';
+              }
+            }}
+            style={{ width: '100%', height: '200px', objectFit: 'cover' }}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
           <div className="absolute bottom-3 left-3 flex gap-2">
