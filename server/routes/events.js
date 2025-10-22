@@ -6,6 +6,7 @@ const {
   updateEvent,
   deleteEvent,
   getMyEvents,
+  getEventAttendees,
   upload
 } = require('../controllers/eventController');
 const { protect } = require('../middleware/auth');
@@ -17,6 +18,7 @@ router.post('/', protect, upload, createEvent);
 router.put('/:id', protect, upload, updateEvent);
 router.delete('/:id', protect, deleteEvent);
 router.get('/my-events', protect, getMyEvents);
+router.get('/:id/attendees', protect, getEventAttendees); 
 
 // Public routes (but can use auth middleware for additional features)
 router.get('/', (req, res, next) => {
@@ -32,7 +34,5 @@ router.get('/:id', (req, res, next) => {
   }
   next();
 }, getEventById);
-
-
 
 module.exports = router;
