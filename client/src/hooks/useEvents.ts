@@ -117,9 +117,12 @@ export function useUpdateEvent() {
       data: Partial<CreateEventForm>;
     }) => apiClient.updateEvent(id, data),
     onSuccess: (_, { id }) => {
-      // Invalidate specific event and lists
+      // Invalidate specific event and all events
       queryClient.invalidateQueries({ queryKey: eventKeys.detail(id) });
-      queryClient.invalidateQueries({ queryKey: eventKeys.lists() });
+      // Invalidate all event lists (with any filters)
+      queryClient.invalidateQueries({ predicate: (query) =>
+        Array.isArray(query.queryKey) && query.queryKey[0] === "events"
+      });
       queryClient.invalidateQueries({ queryKey: eventKeys.myEvents() });
     },
   });
