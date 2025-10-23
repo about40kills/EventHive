@@ -47,16 +47,11 @@ const createEvent = async (req, res) => {
     // Handle file upload
     if (req.file) {
       eventData.image = `/uploads/events/${req.file.filename}`;
-      console.log('Image path saved to DB:', eventData.image); // Debug log
     }
 
-    console.log('Event data before saving:', eventData);
     
     const event = await Event.create(eventData);
     await event.populate('organizer', 'name email');
-
-    console.log('Created event with image:', event.image); // Debug log
-
     res.status(201).json({
       success: true,
       event
@@ -102,7 +97,7 @@ const getAllEvents = async (req, res) => {
       .populate('organizer', 'name email')
       .sort({ date: -1 });
 
-    // Debug: Check if images are in the database
+    //  Check if images are in the database
     events.forEach(event => {
       if (event.image) {
         console.log(`Event "${event.title}" has image: ${event.image}`);
@@ -150,35 +145,56 @@ const getEventById = async (req, res) => {
 const updateEvent = async (req, res) => {
   try {
     const event = await Event.findById(req.params.id);
-
-    if (!event) {
-      return res.status(404).json({ message: 'Event not found' });
-    }
+    if (!event) return res.status(404).json({ message: 'Event not found' });
 
     // Check if user is the organizer
     if (event.organizer.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: 'Not authorized to update this event' });
     }
 
+    // Parse and convert fields
     const updateData = { ...req.body };
 
-    // Handle file upload for images
+    if (typeof updateData.capacity === 'string') updateData.capacity = parseInt(updateData.capacity, 10);
+    if (typeof updateData.isVirtual === 'string') updateData.isVirtual = updateData.isVirtual === 'true';
+
+    if (typeof updateData.accessControl === 'string') {
+      try {
+        updateData.accessControl = JSON.parse(updateData.accessControl);
+        if (typeof updateData.accessControl.isPrivate === 'string') {
+          updateData.accessControl.isPrivate = updateData.accessControl.isPrivate === 'true';
+        }
+      } catch {
+        updateData.accessControl = {};
+      }
+    }
+
+    if (typeof updateData.tags === 'string') {
+      try {
+        // Try to parse as JSON array
+        updateData.tags = JSON.parse(updateData.tags);
+        if (!Array.isArray(updateData.tags)) {
+          updateData.tags = updateData.tags ? [updateData.tags] : [];
+        }
+      } catch {
+        // If it's an empty string or not JSON, set to []
+        updateData.tags = updateData.tags.trim() === '' ? [] : [updateData.tags];
+      }
+    }
+
     if (req.file) {
       updateData.image = `/uploads/events/${req.file.filename}`;
     }
 
-
-    const updatedEvent = await Event.findByIdAndUpdate(
-      req.params.id,
-      updateData,
-      { new: true, runValidators: true }
-    ).populate('organizer', 'name email');
-
-
-    res.json({
-      success: true,
-      event: updatedEvent
+    // Assign all fields to the event
+    Object.keys(updateData).forEach(key => {
+      event[key] = updateData[key];
     });
+
+    await event.save();
+    await event.populate('organizer', 'name email');
+
+    res.json({ success: true, event });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

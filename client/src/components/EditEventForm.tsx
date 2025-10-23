@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -66,6 +66,8 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
     tags: '',
   });
 
+  const hasInitialized = useRef(false);
+
   // Fetch existing event data
   useEffect(() => {
     const fetchEvent = async () => {
@@ -92,9 +94,9 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
           const formattedDate = eventDate.toISOString().split('T')[0];
           
           // Parse tags if they exist
-          const tagsString = eventData.tags 
-            ? (Array.isArray(eventData.tags) ? eventData.tags.join(', ') : eventData.tags)
-            : '';
+          const tagsString = Array.isArray(eventData.tags)
+            ? eventData.tags.join(', ')
+            : (typeof eventData.tags === 'string' ? eventData.tags : '');
 
           // Parse access control
           const accessControl = eventData.accessControl || {};
@@ -102,21 +104,26 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
             ? (Array.isArray(accessControl.allowedDomains) ? accessControl.allowedDomains.join(', ') : accessControl.allowedDomains)
             : '';
           
-          setFormData({
-            title: eventData.title || '',
-            description: eventData.description || '',
-            category: eventData.category || '',
-            eventType: eventData.eventType || 'public',
-            date: formattedDate,
-            time: eventData.time || '',
-            location: eventData.location || '',
-            capacity: eventData.capacity || 50,
-            isVirtual: eventData.isVirtual || false,
-            isPrivate: accessControl.isPrivate || false,
-            accessCode: accessControl.accessCode || '',
-            allowedDomains: allowedDomainsString,
-            tags: tagsString,
-          });
+          // Only set form data if not initialized
+          if (!hasInitialized.current) {
+            setFormData({
+              title: eventData.title || '',
+              description: eventData.description || '',
+              category: eventData.category || '',
+              eventType: eventData.eventType || 'public',
+              date: formattedDate,
+              time: eventData.time || '',
+              location: eventData.location || '',
+              capacity: eventData.capacity || 50,
+              isVirtual: eventData.isVirtual || false,
+              isPrivate: accessControl.isPrivate || false,
+              accessCode: accessControl.accessCode || '',
+              allowedDomains: allowedDomainsString,
+              tags: tagsString,
+              // ...other fields if needed
+            });
+            hasInitialized.current = true;
+          }
           
           if (eventData.image) {
             const imageUrl = eventData.image.startsWith('http') 
@@ -246,8 +253,13 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
       submitData.append('capacity', formData.capacity.toString());
       
       // Handle tags
-      if (formData.tags) {
-        const tags = formData.tags.split(',').map(tag => tag.trim());
+      let tags: string[] = [];
+      if (formData.tags !== undefined) {
+        if (formData.tags.trim() === '') {
+          tags = [];
+        } else {
+          tags = formData.tags.split(',').map(tag => tag.trim()).filter(Boolean);
+        }
         submitData.append('tags', JSON.stringify(tags));
       }
 
@@ -311,20 +323,7 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
     }
   };
 
-  // Show loading while fetching event
-  if (fetchingEvent) {
-    return (
-      <div className="max-w-3xl mx-auto">
-        <Card>
-          <CardContent className="p-6">
-            <div className="text-center">
-              <p>Checking authentication...</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  
 
   return (
     <div className="min-h-screen bg-background px-4 sm:px-6 lg:px-8">
