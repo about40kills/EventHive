@@ -41,6 +41,53 @@ const statusColors = {
 };
 
 export function EventManagementTable({ events, onEdit, onDelete, onViewAttendees }: EventManagementTableProps) {
+  // Use a media query to detect mobile
+  const isMobile = typeof window !== "undefined" && window.innerWidth < 640;
+
+  if (isMobile) {
+    // Card layout for mobile
+    return (
+      <div className="space-y-4">
+        {events.length === 0 ? (
+          <div className="text-center text-muted-foreground py-8">No events found</div>
+        ) : (
+          events.map((event) => (
+            <div key={event.id} className="border rounded-lg p-4 flex flex-col gap-2">
+              <div className="font-bold">{event.title}</div>
+              <div className="text-sm text-muted-foreground">{format(event.date, 'MMM dd, yyyy')}</div>
+              <div>
+                <Badge className={statusColors[event.status]}>{event.status}</Badge>
+              </div>
+              <div className="text-sm">Registered: {event.registeredCount}/{event.capacity}</div>
+              <div className="flex gap-2 justify-end">
+                <Button variant="ghost" size="icon" onClick={() => onEdit?.(event.id)}>
+                  <Edit className="h-4 w-4" />
+                </Button>
+                <Button variant="ghost" size="icon" onClick={() => onViewAttendees?.(event.id)}>
+                  <Users className="h-4 w-4" />
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => onDelete?.(event.id)}>
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    );
+  }
+
+  // Table layout for desktop
   return (
     <div className="border rounded-lg overflow-hidden">
       <Table>
@@ -62,42 +109,24 @@ export function EventManagementTable({ events, onEdit, onDelete, onViewAttendees
             </TableRow>
           ) : (
             events.map((event) => (
-              <TableRow key={event.id} data-testid={`row-event-${event.id}`}>
-                <TableCell className="font-medium" data-testid={`text-title-${event.id}`}>
-                  {event.title}
-                </TableCell>
-                <TableCell data-testid={`text-date-${event.id}`}>
-                  {format(event.date, 'MMM dd, yyyy')}
-                </TableCell>
+              <TableRow key={event.id}>
+                <TableCell className="font-medium">{event.title}</TableCell>
+                <TableCell>{format(event.date, 'MMM dd, yyyy')}</TableCell>
                 <TableCell>
-                  <Badge className={statusColors[event.status]} data-testid={`badge-status-${event.id}`}>
-                    {event.status}
-                  </Badge>
+                  <Badge className={statusColors[event.status]}>{event.status}</Badge>
                 </TableCell>
-                <TableCell data-testid={`text-capacity-${event.id}`}>
-                  {event.registeredCount}/{event.capacity}
-                </TableCell>
+                <TableCell>{event.registeredCount}/{event.capacity}</TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => onEdit?.(event.id)}
-                      data-testid={`button-edit-${event.id}`}
-                    >
+                    <Button variant="ghost" size="icon" onClick={() => onEdit?.(event.id)}>
                       <Edit className="h-4 w-4" />
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => onViewAttendees?.(event.id)}
-                      data-testid={`button-attendees-${event.id}`}
-                    >
+                    <Button variant="ghost" size="icon" onClick={() => onViewAttendees?.(event.id)}>
                       <Users className="h-4 w-4" />
                     </Button>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" data-testid={`button-more-${event.id}`}>
+                        <Button variant="ghost" size="icon">
                           <MoreVertical className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>

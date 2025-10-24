@@ -4,9 +4,9 @@ require("dotenv").config();
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 // Email header template with logo and event image
-const getEmailHeader = (eventImage = null) => {
+const getEmailHeader = () => {
   return `
-    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px 0; text-align: center; margin-bottom: 30px;">
+    <div style="padding: 30px 0; text-align: center; margin-bottom: 30px;">
       <div style="max-width: 600px; margin: 0 auto;">
         <!-- EventHive Logo -->
         <div style="margin-bottom: 20px;">
@@ -14,28 +14,15 @@ const getEmailHeader = (eventImage = null) => {
                alt="EventHive" 
                style="height: 60px; width: auto;">
           <h1 style="
-            color: white; 
+            color: #333; 
             font-size: 36px; 
             font-weight: bold; 
             margin: 0; 
-            text-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            text-shadow: 0 2px 8px rgba(0,0,0,0.1);
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             letter-spacing: -1px;
           ">EventHive</h1>
         </div>
-        
-        ${
-          eventImage
-            ? `
-          <!-- Event Image -->
-          <div style="border-radius: 12px; overflow: hidden; margin: 20px auto; max-width: 400px; box-shadow: 0 8px 24px rgba(0,0,0,0.2);">
-            <img src="${eventImage}" 
-                 alt="Event Image" 
-                 style="width: 100%; height: 200px; object-fit: cover; display: block;">
-          </div>
-        `
-            : ""
-        }
       </div>
     </div>
   `;
@@ -50,7 +37,7 @@ const sendRegistrationConfirmation = async (userEmail, eventDetails) => {
       subject: `Registration Confirmed - ${eventDetails.title}`,
       html: `
         <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff;">
-          ${getEmailHeader(eventDetails.image)}
+          ${getEmailHeader()}
           
           <div style="padding: 0 30px;">
             <h2 style="color: #333; font-size: 28px; margin-bottom: 10px;">Registration Confirmed! 🎉</h2>
