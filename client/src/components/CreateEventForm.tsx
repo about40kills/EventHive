@@ -291,20 +291,7 @@ export function CreateEventForm({ onSubmit, initialData, isLoading }: CreateEven
     }
   };
 
-  // Show loading while checking authentication
-  if (isCheckingAuth) {
-    return (
-      <div className="max-w-3xl mx-auto">
-        <Card>
-          <CardContent className="p-6">
-            <div className="text-center">
-              <p>Checking authentication...</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+
 
   return (
     <div className="min-h-screen bg-background px-4 sm:px-6 lg:px-8">

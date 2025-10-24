@@ -68,8 +68,8 @@ export function Header({ isAuthenticated = false, userRole, userName, onLogout }
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-xl">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex h-16 items-center justify-between gap-4">
+      <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
+        <div className="flex h-16 items-center justify-between gap-2">
 
             <div onClick={handleLogoClick} className="flex items-center gap-2 hover-elevate rounded-lg px-3 py-2" data-testid="link-home">
               <Calendar className="h-6 w-6 text-primary" />

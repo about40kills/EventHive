@@ -115,7 +115,11 @@ export function EventDetailsView({
       {event.imageUrl && (
         <div className="relative w-full aspect-video rounded-xl overflow-hidden">
           <img
-            src={event.imageUrl}
+            src={
+              event.imageUrl?.startsWith("http")
+                ? event.imageUrl
+                : `http://localhost:3001${event.imageUrl}`
+            }
             alt={event.title}
             className="w-full h-full object-cover"
           />

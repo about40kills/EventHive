@@ -1,7 +1,7 @@
 const Event = require('../models/Event');
 const { validationResult } = require('express-validator');
 const path = require('path');
-const multer = require('multer'); 
+const multer = require('multer');
 const Registration = require('../models/Registration'); 
 
 //configure multer for file uploads
@@ -31,8 +31,6 @@ const upload = multer({
 //routes POST /api/events
 const createEvent = async (req, res) => {
   try {
-    console.log('Request body:', req.body);
-    console.log('Uploaded file:', req.file); // Check if file is being received
 
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -182,6 +180,7 @@ const updateEvent = async (req, res) => {
       }
     }
 
+    // Handle image upload
     if (req.file) {
       updateData.image = `/uploads/events/${req.file.filename}`;
     }
