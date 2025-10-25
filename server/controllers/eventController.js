@@ -95,15 +95,6 @@ const getAllEvents = async (req, res) => {
       .populate('organizer', 'name email')
       .sort({ date: -1 });
 
-    //  Check if images are in the database
-    events.forEach(event => {
-      if (event.image) {
-        console.log(`Event "${event.title}" has image: ${event.image}`);
-      } else {
-        console.log(`Event "${event.title}" has NO image`);
-      }
-    });
-
     res.json({
       success: true,
       events
@@ -140,6 +131,8 @@ const getEventById = async (req, res) => {
 
 // Update event
 //routes PUT /api/events/:id
+// Update event
+//routes PUT /api/events/:id
 const updateEvent = async (req, res) => {
   try {
     const event = await Event.findById(req.params.id);
@@ -169,21 +162,26 @@ const updateEvent = async (req, res) => {
 
     if (typeof updateData.tags === 'string') {
       try {
-        // Try to parse as JSON array
         updateData.tags = JSON.parse(updateData.tags);
         if (!Array.isArray(updateData.tags)) {
           updateData.tags = updateData.tags ? [updateData.tags] : [];
         }
       } catch {
-        // If it's an empty string or not JSON, set to []
         updateData.tags = updateData.tags.trim() === '' ? [] : [updateData.tags];
       }
     }
 
-    // Handle image upload
-    if (req.file) {
+    // Handle image removal 
+    if (req.body.removeImage === 'true') {
+      updateData.image = null; 
+    } 
+    // Handle new image upload
+    else if (req.file) {
       updateData.image = `/uploads/events/${req.file.filename}`;
     }
+
+    // Remove the removeImage flag from updateData so it doesn't get saved to DB
+    delete updateData.removeImage;
 
     // Assign all fields to the event
     Object.keys(updateData).forEach(key => {

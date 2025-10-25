@@ -26,6 +26,7 @@ export interface EventFormData {
   allowedDomains?: string;
   tags?: string;
   image?: File;
+  removeImage?: boolean;
 }
 
 interface EditEventFormProps {
@@ -51,19 +52,19 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   
   const [formData, setFormData] = useState<EventFormData>({
-    title: '',
-    description: '',
-    category: '',
-    eventType: 'public',
-    date: '',
-    time: '',
-    location: '',
+    title: "",
+    description: "",
+    category: "",
+    eventType: "public",
+    date: "",
+    time: "",
+    location: "",
     capacity: 50,
     isVirtual: false,
     isPrivate: false,
-    accessCode: '',
-    allowedDomains: '',
-    tags: '',
+    accessCode: "",
+    allowedDomains: "",
+    tags: "",
   });
 
   const hasInitialized = useRef(false);
@@ -72,9 +73,7 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
   useEffect(() => {
     const fetchEvent = async () => {
       try {
-        
         if (!apiClient.isAuthenticated()) {
-          
           toast({
             title: "Error",
             description: "Please log in to edit events",
@@ -95,32 +94,36 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
           
           // Parse tags if they exist
           const tagsString = Array.isArray(eventData.tags)
-            ? eventData.tags.join(', ')
-            : (typeof eventData.tags === 'string' ? eventData.tags : '');
+            ? eventData.tags.join(", ")
+            : typeof eventData.tags === "string"
+            ? eventData.tags
+            : "";
 
           // Parse access control
           const accessControl = eventData.accessControl || {};
-          const allowedDomainsString = accessControl.allowedDomains 
-            ? (Array.isArray(accessControl.allowedDomains) ? accessControl.allowedDomains.join(', ') : accessControl.allowedDomains)
-            : '';
+          const allowedDomainsString = accessControl.allowedDomains
+            ? Array.isArray(accessControl.allowedDomains)
+              ? accessControl.allowedDomains.join(", ")
+              : accessControl.allowedDomains
+            : "";
           
           // Only set form data if not initialized
           if (!hasInitialized.current) {
             setFormData({
-              title: eventData.title || '',
-              description: eventData.description || '',
-              category: eventData.category || '',
-              eventType: eventData.eventType || 'public',
+              title: eventData.title || "",
+              description: eventData.description || "",
+              category: eventData.category || "",
+              eventType: eventData.eventType || "public",
               date: formattedDate,
-              time: eventData.time || '',
-              location: eventData.location || '',
+              time: eventData.time || "",
+              location: eventData.location || "",
               capacity: eventData.capacity || 50,
               isVirtual: eventData.isVirtual || false,
               isPrivate: accessControl.isPrivate || false,
-              accessCode: accessControl.accessCode || '',
+              accessCode: accessControl.accessCode || "",
               allowedDomains: allowedDomainsString,
               tags: tagsString,
-              // ...other fields if needed
+              
             });
             hasInitialized.current = true;
           }
@@ -202,20 +205,23 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
         return;
       }
 
-      setFormData({ ...formData, image: file });
+      setFormData({ ...formData, image: file, removeImage: false });
 
       // Create preview
       const reader = new FileReader();
       reader.onloadend = () => {
+        console.log('Preview created'); // Debug log
         setImagePreview(reader.result as string);
+        setFormData(prev => ({ ...prev, image: file, removeImage: false }));
       };
       reader.readAsDataURL(file);
     }
   };
 
   const removeImage = () => {
-    setFormData({ ...formData, image: undefined });
-    setImagePreview(currentImageUrl); // Reset to current image if it exists, or null
+    setFormData({ ...formData, image: undefined, removeImage: true });
+    setImagePreview(null); // Reset to current image if it exists, or null
+    setCurrentImageUrl(null); // Clear the current image URL
     // Reset file input
     const fileInput = document.getElementById('image') as HTMLInputElement;
     if (fileInput) {
@@ -258,7 +264,10 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
         if (formData.tags.trim() === '') {
           tags = [];
         } else {
-          tags = formData.tags.split(',').map(tag => tag.trim()).filter(Boolean);
+          tags = formData.tags
+          .split(',')
+          .map(tag => tag.trim())
+          .filter(Boolean);
         }
         submitData.append('tags', JSON.stringify(tags));
       }
@@ -278,14 +287,22 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
         submitData.append('image', formData.image);
       }
 
+      //Append removeImage flag if user wants to remove existing image
+      if (formData.removeImage) {
+        submitData.append('removeImage', 'true');
+      }
+      
       console.log('Making event update request...');
-      const response = await fetch(`http://localhost:3001/api/events/${eventId}`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-        body: submitData,
-      });
+      const response = await fetch(
+        `http://localhost:3001/api/events/${eventId}`,
+        {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: submitData,
+        }
+      );
 
       const result = await response.json();
       console.log('Event update response:', result);
@@ -310,12 +327,14 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
       });
 
       setLocation('/dashboard');
-      
-    } catch (error) {
+      } catch (error) {
       console.error('Error updating event:', error);
       toast({
         title: "Failed to update event",
-        description: error instanceof Error ? error.message : "Something went wrong. Please try again.",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Something went wrong. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -323,7 +342,31 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
     }
   };
 
-  
+  if (fetchingEvent) {
+    return (
+      <div className="min-h-screen bg-background px-4 sm:px-6 lg:px-8">
+        <div className="max-w-4xl mx-auto py-8">
+          <div className="mb-6">
+            <Button
+              variant="ghost"
+              onClick={() => setLocation("/dashboard")}
+              className="mb-4"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Dashboard
+            </Button>
+          </div>
+          <Card className="w-full">
+            <CardContent className="py-8">
+              <div className="flex items-center justify-center">
+                <p className="text-muted-foreground">Loading event data...</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }  
 
   return (
     <div className="min-h-screen bg-background px-4 sm:px-6 lg:px-8">
@@ -359,7 +402,9 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
                     id="title"
                     placeholder="Tech Innovation Summit 2024"
                     value={formData.title}
-                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    onChange={(e) =>
+                       setFormData({ ...formData, title: e.target.value })
+                    }
                     required
                     data-testid="input-title"
                   />
@@ -371,10 +416,14 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
                     id="tags"
                     placeholder="AI, Innovation, Networking"
                     value={formData.tags}
-                    onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
+                    onChange={(e) =>
+                       setFormData({ ...formData, tags: e.target.value })
+                    }
                     data-testid="input-tags"
                   />
-                  <p className="text-xs text-muted-foreground">Comma-separated tags</p>
+                  <p className="text-xs text-muted-foreground">
+                    Comma-separated tags
+                  </p>
                 </div>
               </div>
 
@@ -384,7 +433,9 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
                   id="description"
                   placeholder="Describe your event..."
                   value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  onChange={(e) =>
+                     setFormData({ ...formData, description: e.target.value })
+                  }
                   required
                   rows={4}
                   data-testid="input-description"
@@ -444,7 +495,9 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
                   <Label htmlFor="category">Category *</Label>
                   <Select
                     value={formData.category}
-                    onValueChange={(value) => setFormData({ ...formData, category: value })}
+                    onValueChange={(value) =>
+                       setFormData({ ...formData, category: value })
+                    }
                   >
                     <SelectTrigger id="category" data-testid="select-category">
                       <SelectValue placeholder="Select category" />
@@ -463,9 +516,14 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
                   <Label htmlFor="eventType">Event Type *</Label>
                   <Select
                     value={formData.eventType}
-                    onValueChange={(value: 'public' | 'corporate') => setFormData({ ...formData, eventType: value })}
+                    onValueChange={(value: 'public' | 'corporate') =>
+                       setFormData({ ...formData, eventType: value })
+                    }
                   >
-                    <SelectTrigger id="eventType" data-testid="select-event-type">
+                    <SelectTrigger
+                     id="eventType"
+                     data-testid="select-event-type"
+                    >
                       <SelectValue placeholder="Select type" />
                     </SelectTrigger>
                     <SelectContent>
@@ -483,7 +541,9 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
                     id="date"
                     type="date"
                     value={formData.date}
-                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                    onChange={(e) =>
+                       setFormData({ ...formData, date: e.target.value })
+                    }
                     required
                     data-testid="input-date"
                   />
@@ -495,7 +555,9 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
                     id="time"
                     placeholder="9:00 AM - 5:00 PM"
                     value={formData.time}
-                    onChange={(e) => setFormData({ ...formData, time: e.target.value })}
+                    onChange={(e) =>
+                       setFormData({ ...formData, time: e.target.value })
+                    }
                     required
                     data-testid="input-time"
                   />
@@ -509,7 +571,9 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
                     id="location"
                     placeholder="Convention Center, Hall A"
                     value={formData.location}
-                    onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                    onChange={(e) =>
+                     setFormData({ ...formData, location: e.target.value })
+                    }
                     required
                     data-testid="input-location"
                   />
@@ -522,7 +586,12 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
                     type="number"
                     min="1"
                     value={formData.capacity}
-                    onChange={(e) => setFormData({ ...formData, capacity: parseInt(e.target.value) })}
+                    onChange={(e) =>
+                       setFormData({
+                         ...formData,
+                         capacity: parseInt(e.target.value),
+                      })
+                    }
                     required
                     data-testid="input-capacity"
                   />
@@ -532,8 +601,12 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="flex items-center justify-between p-4 border rounded-lg">
                   <div className="space-y-0.5">
-                    <Label htmlFor="isVirtual" className="cursor-pointer">Virtual Event</Label>
-                    <p className="text-sm text-muted-foreground">Event will be held online</p>
+                    <Label htmlFor="isVirtual" className="cursor-pointer">
+                      Virtual Event
+                    </Label>
+                    <p className="text-sm text-muted-foreground">
+                      Event will be held online
+                    </p>
                   </div>
                   <Switch
                     id="isVirtual"
@@ -548,8 +621,12 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
 
                 <div className="flex items-center justify-between p-4 border rounded-lg">
                   <div className="space-y-0.5">
-                    <Label htmlFor="isPrivate" className="cursor-pointer">Private Event</Label>
-                    <p className="text-sm text-muted-foreground">Require access code or email domain</p>
+                    <Label htmlFor="isPrivate" className="cursor-pointer">
+                      Private Event
+                    </Label>
+                    <p className="text-sm text-muted-foreground">
+                      Require access code or email domain
+                    </p>
                   </div>
                   <Switch
                     id="isPrivate"
@@ -571,21 +648,35 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
                         id="accessCode"
                         placeholder="Enter access code"
                         value={formData.accessCode}
-                        onChange={(e) => setFormData({ ...formData, accessCode: e.target.value })}
+                        onChange={(e) =>
+                          setFormData({
+                             ...formData,
+                             accessCode: e.target.value 
+                          })
+                        }
                         data-testid="input-access-code"
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="allowedDomains">Allowed Email Domains (optional)</Label>
+                      <Label htmlFor="allowedDomains">
+                        Allowed Email Domains (optional)
+                      </Label>
                       <Input
                         id="allowedDomains"
                         placeholder="company.com, partner.com"
                         value={formData.allowedDomains}
-                        onChange={(e) => setFormData({ ...formData, allowedDomains: e.target.value })}
+                        onChange={(e) =>
+                          setFormData({ 
+                            ...formData,
+                            allowedDomains: e.target.value 
+                          })
+                        }
                         data-testid="input-domains"
                       />
-                      <p className="text-xs text-muted-foreground">Comma-separated domains</p>
+                      <p className="text-xs text-muted-foreground">
+                        Comma-separated domains
+                      </p>
                     </div>
                   </div>
                 </div>
