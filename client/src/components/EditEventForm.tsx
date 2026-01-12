@@ -9,7 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Upload, X, Calendar } from "lucide-react";
 import { useLocation } from "wouter";
-import { apiClient } from "@/lib/api";
+import { apiClient, SERVER_URL } from "@/lib/api";
 
 export interface EventFormData {
   title: string;
@@ -50,7 +50,7 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
   const [fetchingEvent, setFetchingEvent] = useState(true);
   const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-  
+
   const [formData, setFormData] = useState<EventFormData>({
     title: "",
     description: "",
@@ -84,20 +84,20 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
         }
 
         const response = await apiClient.getEvent(eventId);
-        
+
         if (response.success && response.event) {
           const eventData = response.event;
-          
+
           // Convert date to input format
           const eventDate = new Date(eventData.date);
           const formattedDate = eventDate.toISOString().split('T')[0];
-          
+
           // Parse tags if they exist
           const tagsString = Array.isArray(eventData.tags)
             ? eventData.tags.join(", ")
             : typeof eventData.tags === "string"
-            ? eventData.tags
-            : "";
+              ? eventData.tags
+              : "";
 
           // Parse access control
           const accessControl = eventData.accessControl || {};
@@ -106,7 +106,7 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
               ? accessControl.allowedDomains.join(", ")
               : accessControl.allowedDomains
             : "";
-          
+
           // Only set form data if not initialized
           if (!hasInitialized.current) {
             setFormData({
@@ -123,24 +123,24 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
               accessCode: accessControl.accessCode || "",
               allowedDomains: allowedDomainsString,
               tags: tagsString,
-              
+
             });
             hasInitialized.current = true;
           }
-          
+
           if (eventData.image) {
-            const imageUrl = eventData.image.startsWith('http') 
-              ? eventData.image 
-              : `http://localhost:3001${eventData.image}`;
+            const imageUrl = eventData.image.startsWith('http')
+              ? eventData.image
+              : `${SERVER_URL}${eventData.image}`;
             setCurrentImageUrl(imageUrl);
-            setImagePreview(imageUrl); 
+            setImagePreview(imageUrl);
           }
         } else {
           throw new Error('Failed to fetch event data');
         }
       } catch (error) {
         console.error('Fetch error:', error);
-        
+
         if (error instanceof Error && error.message.includes('404')) {
           toast({
             title: "Event Not Found",
@@ -239,14 +239,14 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
 
     try {
       const token = localStorage.getItem('authToken');
-      
+
       if (!token) {
         throw new Error('No authentication token found. Please log in again.');
       }
 
       // Create FormData for file upload
       const submitData = new FormData();
-      
+
       // Append all form fields
       submitData.append('title', formData.title);
       submitData.append('description', formData.description);
@@ -257,7 +257,7 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
       submitData.append('location', formData.location);
       submitData.append('isVirtual', formData.isVirtual.toString());
       submitData.append('capacity', formData.capacity.toString());
-      
+
       // Handle tags
       let tags: string[] = [];
       if (formData.tags !== undefined) {
@@ -265,9 +265,9 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
           tags = [];
         } else {
           tags = formData.tags
-          .split(',')
-          .map(tag => tag.trim())
-          .filter(Boolean);
+            .split(',')
+            .map(tag => tag.trim())
+            .filter(Boolean);
         }
         submitData.append('tags', JSON.stringify(tags));
       }
@@ -291,10 +291,10 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
       if (formData.removeImage) {
         submitData.append('removeImage', 'true');
       }
-      
+
       console.log('Making event update request...');
       const response = await fetch(
-        `http://localhost:3001/api/events/${eventId}`,
+        `${SERVER_URL}/api/events/${eventId}`,
         {
           method: "PUT",
           headers: {
@@ -327,7 +327,7 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
       });
 
       setLocation('/dashboard');
-      } catch (error) {
+    } catch (error) {
       console.error('Error updating event:', error);
       toast({
         title: "Failed to update event",
@@ -366,7 +366,7 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
         </div>
       </div>
     );
-  }  
+  }
 
   return (
     <div className="min-h-screen bg-background px-4 sm:px-6 lg:px-8">
@@ -403,7 +403,7 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
                     placeholder="Tech Innovation Summit 2024"
                     value={formData.title}
                     onChange={(e) =>
-                       setFormData({ ...formData, title: e.target.value })
+                      setFormData({ ...formData, title: e.target.value })
                     }
                     required
                     data-testid="input-title"
@@ -417,7 +417,7 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
                     placeholder="AI, Innovation, Networking"
                     value={formData.tags}
                     onChange={(e) =>
-                       setFormData({ ...formData, tags: e.target.value })
+                      setFormData({ ...formData, tags: e.target.value })
                     }
                     data-testid="input-tags"
                   />
@@ -434,7 +434,7 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
                   placeholder="Describe your event..."
                   value={formData.description}
                   onChange={(e) =>
-                     setFormData({ ...formData, description: e.target.value })
+                    setFormData({ ...formData, description: e.target.value })
                   }
                   required
                   rows={4}
@@ -496,7 +496,7 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
                   <Select
                     value={formData.category}
                     onValueChange={(value) =>
-                       setFormData({ ...formData, category: value })
+                      setFormData({ ...formData, category: value })
                     }
                   >
                     <SelectTrigger id="category" data-testid="select-category">
@@ -517,12 +517,12 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
                   <Select
                     value={formData.eventType}
                     onValueChange={(value: 'public' | 'corporate') =>
-                       setFormData({ ...formData, eventType: value })
+                      setFormData({ ...formData, eventType: value })
                     }
                   >
                     <SelectTrigger
-                     id="eventType"
-                     data-testid="select-event-type"
+                      id="eventType"
+                      data-testid="select-event-type"
                     >
                       <SelectValue placeholder="Select type" />
                     </SelectTrigger>
@@ -542,7 +542,7 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
                     type="date"
                     value={formData.date}
                     onChange={(e) =>
-                       setFormData({ ...formData, date: e.target.value })
+                      setFormData({ ...formData, date: e.target.value })
                     }
                     required
                     data-testid="input-date"
@@ -556,7 +556,7 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
                     placeholder="9:00 AM - 5:00 PM"
                     value={formData.time}
                     onChange={(e) =>
-                       setFormData({ ...formData, time: e.target.value })
+                      setFormData({ ...formData, time: e.target.value })
                     }
                     required
                     data-testid="input-time"
@@ -572,7 +572,7 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
                     placeholder="Convention Center, Hall A"
                     value={formData.location}
                     onChange={(e) =>
-                     setFormData({ ...formData, location: e.target.value })
+                      setFormData({ ...formData, location: e.target.value })
                     }
                     required
                     data-testid="input-location"
@@ -587,9 +587,9 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
                     min="1"
                     value={formData.capacity}
                     onChange={(e) =>
-                       setFormData({
-                         ...formData,
-                         capacity: parseInt(e.target.value),
+                      setFormData({
+                        ...formData,
+                        capacity: parseInt(e.target.value),
                       })
                     }
                     required
@@ -650,8 +650,8 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
                         value={formData.accessCode}
                         onChange={(e) =>
                           setFormData({
-                             ...formData,
-                             accessCode: e.target.value 
+                            ...formData,
+                            accessCode: e.target.value
                           })
                         }
                         data-testid="input-access-code"
@@ -667,9 +667,9 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
                         placeholder="company.com, partner.com"
                         value={formData.allowedDomains}
                         onChange={(e) =>
-                          setFormData({ 
+                          setFormData({
                             ...formData,
-                            allowedDomains: e.target.value 
+                            allowedDomains: e.target.value
                           })
                         }
                         data-testid="input-domains"

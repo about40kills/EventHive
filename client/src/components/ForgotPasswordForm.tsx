@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Calendar, ArrowLeft, Mail, CheckCircle } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
+import { SERVER_URL } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 
 export function ForgotPasswordForm() {
@@ -20,7 +21,7 @@ export function ForgotPasswordForm() {
     setEmailError("");
 
     try {
-      const response = await fetch('http://localhost:3001/api/auth/forgot-password', {
+      const response = await fetch(`${SERVER_URL}/api/auth/forgot-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -38,14 +39,14 @@ export function ForgotPasswordForm() {
       toast({
         title: "Reset link successfully sent!",
         description: `We've sent password reset instructions to ${email}`,
-        variant: "default", 
+        variant: "default",
       });
     } catch (error) {
       let errorMessage = "Failed to send reset email. Please try again.";
-      
+
       if (error instanceof Error) {
         const message = error.message.toLowerCase();
-        
+
         if (message.includes('email') || message.includes('user not found') || message.includes('account not found')) {
           errorMessage = "No account found with this email address.";
           setEmailError("No account found with this email");
@@ -56,7 +57,7 @@ export function ForgotPasswordForm() {
           errorMessage = error.message;
         }
       }
-      
+
       toast({
         title: "Error",
         description: errorMessage,
@@ -93,7 +94,7 @@ export function ForgotPasswordForm() {
                 Check your inbox and click the reset link to continue
               </p>
             </div>
-            
+
             <div className="text-center space-y-2">
               <p className="text-sm text-muted-foreground">
                 Click the link in the email to reset your password. The link will expire in 24 hours.

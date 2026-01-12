@@ -1,21 +1,9 @@
 const Event = require('../models/Event');
 const { validationResult } = require('express-validator');
-const path = require('path');
+const { storage } = require('../config/cloudinary');
 const multer = require('multer');
-const Registration = require('../models/Registration'); 
 
-//configure multer for file uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, 'uploads/events/');
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, 'event-' + uniqueSuffix + path.extname(file.originalname));
-  }
-});
-
-const upload = multer({ 
+const upload = multer({
   storage: storage,
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
@@ -44,10 +32,10 @@ const createEvent = async (req, res) => {
 
     // Handle file upload
     if (req.file) {
-      eventData.image = `/uploads/events/${req.file.filename}`;
+      eventData.image = req.file.path;
     }
 
-    
+
     const event = await Event.create(eventData);
     await event.populate('organizer', 'name email');
     res.status(201).json({
@@ -173,11 +161,11 @@ const updateEvent = async (req, res) => {
 
     // Handle image removal 
     if (req.body.removeImage === 'true') {
-      updateData.image = null; 
-    } 
+      updateData.image = null;
+    }
     // Handle new image upload
     else if (req.file) {
-      updateData.image = `/uploads/events/${req.file.filename}`;
+      updateData.image = req.file.path;
     }
 
     // Remove the removeImage flag from updateData so it doesn't get saved to DB
@@ -250,27 +238,27 @@ const getEventAttendees = async (req, res) => {
     // First, check if the event exists and user is the organizer
     const event = await Event.findById(eventId);
     if (!event) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Event not found' 
+      return res.status(404).json({
+        success: false,
+        message: 'Event not found'
       });
     }
 
     // Check if the current user is the organizer of this event
     if (event.organizer.toString() !== userId.toString()) {
-      return res.status(403).json({ 
-        success: false, 
-        message: 'Not authorized to view attendees for this event' 
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to view attendees for this event'
       });
     }
 
     // Fetch attendees (registrations for this event)
-    const registrations = await Registration.find({ 
+    const registrations = await Registration.find({
       event: eventId,
       status: { $ne: 'cancelled' } // Exclude cancelled registrations
     })
-    .populate('user', 'name email phone avatar')
-    .sort({ registrationDate: -1 });
+      .populate('user', 'name email phone avatar')
+      .sort({ registrationDate: -1 });
 
     // Format the attendees data
     const attendees = registrations.map(registration => ({
@@ -290,9 +278,9 @@ const getEventAttendees = async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching event attendees:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Server error while fetching attendees' 
+    res.status(500).json({
+      success: false,
+      message: 'Server error while fetching attendees'
     });
   }
 };

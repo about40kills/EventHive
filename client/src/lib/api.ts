@@ -12,7 +12,8 @@ import type {
   EventFilters,
 } from "../types/api";
 
-const API_BASE_URL = "http://localhost:3001/api";
+export const SERVER_URL = import.meta.env.VITE_SERVER_URL || "http://localhost:3001";
+const API_BASE_URL = `${SERVER_URL}/api`;
 
 class ApiClient {
   private token: string | null = null;
@@ -42,7 +43,7 @@ class ApiClient {
   ): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`;
 
-  
+
     const isFormData = options.body instanceof FormData;
 
     const config: RequestInit = {

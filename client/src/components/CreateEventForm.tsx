@@ -8,10 +8,11 @@ import { Switch } from "@/components/ui/switch";
 import { Calendar, Upload, X } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { useCreateEvent } from "../hooks/useEvents"; 
+import { useCreateEvent } from "../hooks/useEvents";
 import { useToast } from "@/hooks/use-toast";
 import type { CreateEventForm as CreateEventFormType } from "../types/api";
 import { set } from "date-fns";
+import { SERVER_URL } from "@/lib/api";
 
 interface CreateEventFormProps {
   onSubmit?: (data: EventFormData) => void;
@@ -93,14 +94,14 @@ export function CreateEventForm({ onSubmit, initialData, isLoading }: CreateEven
   //handle description change with validation
   const handleDescriptionChange = (value: string) => {
     setFormData({ ...formData, description: value });
-    const error= validateDescription(value);
+    const error = validateDescription(value);
     setDescriptionError(error);
   };
 
   // Check authentication on component mount
   useEffect(() => {
     const checkAuth = async () => {
-      const token = localStorage.getItem('authToken'); 
+      const token = localStorage.getItem('authToken');
       if (!token) {
         toast({
           title: "Authentication required",
@@ -113,7 +114,7 @@ export function CreateEventForm({ onSubmit, initialData, isLoading }: CreateEven
 
       try {
         // Verify token is still valid
-        const response = await fetch('http://localhost:3001/api/auth/me', {
+        const response = await fetch(`${SERVER_URL}/api/auth/me`, {
           headers: {
             'Authorization': `Bearer ${token}`,
           },
@@ -121,7 +122,7 @@ export function CreateEventForm({ onSubmit, initialData, isLoading }: CreateEven
 
         if (!response.ok) {
           // Token is invalid
-          localStorage.removeItem('authToken'); 
+          localStorage.removeItem('authToken');
           toast({
             title: "Session expired",
             description: "Please log in again to create an event.",
@@ -135,7 +136,7 @@ export function CreateEventForm({ onSubmit, initialData, isLoading }: CreateEven
         setIsCheckingAuth(false);
       } catch (error) {
         console.error('Auth check failed:', error);
-        localStorage.removeItem('authToken');  
+        localStorage.removeItem('authToken');
         setLocation('/login');
       }
     };
@@ -188,7 +189,7 @@ export function CreateEventForm({ onSubmit, initialData, isLoading }: CreateEven
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-// Validate description before submitting
+    // Validate description before submitting
     const descError = validateDescription(formData.description);
     if (descError) {
       setDescriptionError(descError);
@@ -203,15 +204,15 @@ export function CreateEventForm({ onSubmit, initialData, isLoading }: CreateEven
     setIsSubmitting(true);
 
     try {
-      const token = localStorage.getItem('authToken'); 
-      
+      const token = localStorage.getItem('authToken');
+
       if (!token) {
         throw new Error('No authentication token found. Please log in again.');
       }
 
       // Create FormData for file upload
       const submitData = new FormData();
-      
+
       // Append all form fields
       submitData.append('title', formData.title);
       submitData.append('description', formData.description);
@@ -223,7 +224,7 @@ export function CreateEventForm({ onSubmit, initialData, isLoading }: CreateEven
       submitData.append('isVirtual', formData.isVirtual.toString());
       submitData.append('capacity', formData.capacity.toString());
       submitData.append('status', 'published');
-      
+
       // Handle tags
       if (formData.tags) {
         const tags = formData.tags.split(',').map(tag => tag.trim());
@@ -245,7 +246,7 @@ export function CreateEventForm({ onSubmit, initialData, isLoading }: CreateEven
         submitData.append('image', formData.image);
       }
 
-      const response = await fetch('http://localhost:3001/api/events', {
+      const response = await fetch(`${SERVER_URL}/api/events`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -278,7 +279,7 @@ export function CreateEventForm({ onSubmit, initialData, isLoading }: CreateEven
 
       onSubmit?.(formData);
       setLocation('/events');
-      
+
     } catch (error) {
       console.error('Error creating event:', error);
       toast({

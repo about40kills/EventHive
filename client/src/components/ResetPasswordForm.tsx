@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Calendar, CheckCircle } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
+import { SERVER_URL } from "@/lib/api";
 import { useToast } from "@/hooks/use-toast";
 
 interface ResetPasswordFormProps {
@@ -28,7 +29,7 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
     // Verify token on component mount
     const verifyToken = async () => {
       try {
-        const response = await fetch(`http://localhost:3001/api/auth/verify-reset-token/${token}`);
+        const response = await fetch(`${SERVER_URL}/api/auth/verify-reset-token/${token}`);
         if (!response.ok) {
           setIsValidToken(false);
         }
@@ -71,7 +72,7 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validatePasswords()) {
       return;
     }
@@ -79,11 +80,11 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
     setIsLoading(true);
     clearFieldErrors();
 
-    try { 
+    try {
       console.log('Submitting password reset for token:', token); // Debug log
       console.log('New password length:', password.length); // Debug log
 
-      const response = await fetch('http://localhost:3001/api/auth/reset-password', {
+      const response = await fetch(`${SERVER_URL}/api/auth/reset-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -105,10 +106,10 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
       });
     } catch (error) {
       let errorMessage = "Failed to reset password. Please try again.";
-      
+
       if (error instanceof Error) {
         const message = error.message.toLowerCase();
-        
+
         if (message.includes('expired') || message.includes('invalid token')) {
           errorMessage = "This reset link has expired. Please request a new one.";
           setIsValidToken(false);
@@ -119,7 +120,7 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
           errorMessage = error.message;
         }
       }
-      
+
       toast({
         title: "Error",
         description: errorMessage,

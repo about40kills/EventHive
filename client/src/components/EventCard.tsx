@@ -3,6 +3,7 @@ import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge";
 import { Calendar, MapPin, Users, Clock } from "lucide-react";
 import { format } from "date-fns";
+import { SERVER_URL } from "@/lib/api";
 
 interface EventCardProps {
   id: string;
@@ -51,23 +52,23 @@ export function EventCard({
   const getImageUrl = () => {
 
     if (!imageUrl) return null;
-    
+
     // If it's already a full URL, use it
     if (imageUrl.startsWith('http')) {
       return imageUrl;
     }
-    
+
     // If it's a relative path from backend, prepend server URL
     if (imageUrl.startsWith('/uploads/')) {
-      const fullUrl = `http://localhost:3001${imageUrl}`;
+      const fullUrl = `${SERVER_URL}${imageUrl}`;
       return fullUrl;
     }
-    
+
     // If it's base64, use directly
     if (imageUrl.startsWith('data:image/')) {
       return imageUrl;
     }
-    
+
     return null;
   };
 
@@ -107,7 +108,7 @@ export function EventCard({
           </div>
         </div>
       )}
-      
+
       <CardHeader className="space-y-2 flex-1">
         <h3 className="text-xl font-semibold line-clamp-2" data-testid={`text-title-${id}`}>
           {title}
@@ -142,9 +143,8 @@ export function EventCard({
           </div>
           <div className="w-full bg-muted rounded-full h-2">
             <div
-              className={`h-2 rounded-full transition-all ${
-                percentFull >= 90 ? 'bg-destructive' : percentFull >= 70 ? 'bg-chart-4' : 'bg-primary'
-              }`}
+              className={`h-2 rounded-full transition-all ${percentFull >= 90 ? 'bg-destructive' : percentFull >= 70 ? 'bg-chart-4' : 'bg-primary'
+                }`}
               style={{ width: `${percentFull}%` }}
             />
           </div>
@@ -166,13 +166,13 @@ export function EventCard({
         </Button>
         {showBothButtons && (
           <Button
-          className="flex-1"
-          onClick={() => onRegister?.(id)}
-          disabled={spotsLeft === 0}
-          data-testid={`button-register-${id}`}
-        >
-          {spotsLeft === 0 ? 'Full' : 'Register'}
-        </Button>
+            className="flex-1"
+            onClick={() => onRegister?.(id)}
+            disabled={spotsLeft === 0}
+            data-testid={`button-register-${id}`}
+          >
+            {spotsLeft === 0 ? 'Full' : 'Register'}
+          </Button>
         )}
       </CardFooter>
     </Card>

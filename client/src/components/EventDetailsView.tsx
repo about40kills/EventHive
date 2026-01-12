@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Calendar, MapPin, Users, Clock, Globe, Shield, Trash2 } from "lucide-react";
 import { format } from "date-fns";
+import { SERVER_URL } from "@/lib/api";
 
 type EventAction = 'register' | 'cancel-registration' | 'delete' | 'waitlist' | 'login-required' | 'organizer-no-register';
 
@@ -52,9 +53,9 @@ export function EventDetailsView({
     switch (eventAction) {
       case 'delete':
         return (
-          <Button 
-            variant="destructive" 
-            className="w-full" 
+          <Button
+            variant="destructive"
+            className="w-full"
             onClick={onDeleteEvent}
             data-testid="button-delete-event"
           >
@@ -62,7 +63,7 @@ export function EventDetailsView({
             Delete This Event
           </Button>
         );
-      
+
       case 'cancel-registration':
         return (
           <Button
@@ -74,28 +75,28 @@ export function EventDetailsView({
             Cancel Registration
           </Button>
         );
-      
+
       case 'waitlist':
         return (
           <Button className="w-full" disabled data-testid="button-join-waitlist">
             Join Waitlist
           </Button>
         );
-      
+
       case 'register':
         return (
           <Button className="w-full" onClick={onRegister} data-testid="button-register">
             Register for Event
           </Button>
         );
-      
+
       case 'login-required':
         return (
           <Button className="w-full" disabled>
             Login to Register
           </Button>
         );
-      
+
       case 'organizer-no-register':
         return (
           <div className="w-full text-center p-3 bg-muted rounded-lg">
@@ -104,7 +105,7 @@ export function EventDetailsView({
             </p>
           </div>
         );
-      
+
       default:
         return null;
     }
@@ -118,7 +119,7 @@ export function EventDetailsView({
             src={
               event.imageUrl?.startsWith("http")
                 ? event.imageUrl
-                : `http://localhost:3001${event.imageUrl}`
+                : `${SERVER_URL}${event.imageUrl}`
             }
             alt={event.title}
             className="w-full h-full object-cover"
@@ -216,13 +217,12 @@ export function EventDetailsView({
                     </p>
                     <div className="w-full bg-muted rounded-full h-2 mt-2">
                       <div
-                        className={`h-2 rounded-full ${
-                          (event.registeredCount / event.capacity) >= 0.9
-                            ? 'bg-destructive'
-                            : (event.registeredCount / event.capacity) >= 0.7
+                        className={`h-2 rounded-full ${(event.registeredCount / event.capacity) >= 0.9
+                          ? 'bg-destructive'
+                          : (event.registeredCount / event.capacity) >= 0.7
                             ? 'bg-chart-4'
                             : 'bg-primary'
-                        }`}
+                          }`}
                         style={{ width: `${(event.registeredCount / event.capacity) * 100}%` }}
                       />
                     </div>
