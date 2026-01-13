@@ -26,9 +26,7 @@ export function Header({ isAuthenticated = false, userRole, userName, onLogout }
   };
 
 
-  const handleLogoClick = () => {
-    window.location.reload();
-  }
+
 
   const navItems = [
     { label: 'Events', path: '/events' },
@@ -71,11 +69,19 @@ export function Header({ isAuthenticated = false, userRole, userName, onLogout }
       <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
         <div className="flex h-16 items-center justify-between gap-2">
 
-            <div onClick={handleLogoClick} className="flex items-center gap-2 hover-elevate rounded-lg px-3 py-2" data-testid="link-home">
-              <Calendar className="h-6 w-6 text-primary" />
-              <span className="text-xl font-bold">EventHive</span>
-            </div>
-          
+          <a
+            href="/"
+            onClick={(e) => {
+              e.preventDefault();
+              setLocation('/');
+            }}
+            className="flex items-center gap-2 hover-elevate rounded-lg px-3 py-2 cursor-pointer text-foreground hover:no-underline"
+            data-testid="link-home"
+          >
+            <Calendar className="h-6 w-6 text-primary" />
+            <span className="text-xl font-bold">EventHive</span>
+          </a>
+
 
           <nav className="hidden md:flex items-center gap-2">
             <NavLinks />
@@ -83,7 +89,7 @@ export function Header({ isAuthenticated = false, userRole, userName, onLogout }
 
           <div className="flex items-center gap-2">
             <ThemeToggle />
-            
+
             {isAuthenticated ? (
               <div className="hidden md:flex items-center gap-2">
                 <div className="flex items-center gap-2 px-3">
