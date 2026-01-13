@@ -5,6 +5,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Calendar, MapPin, Users, Clock, Globe, Shield, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { SERVER_URL } from "@/lib/api";
+import { getOptimizedImageUrl } from "@/lib/utils";
 
 type EventAction = 'register' | 'cancel-registration' | 'delete' | 'waitlist' | 'login-required' | 'organizer-no-register';
 
@@ -116,11 +117,12 @@ export function EventDetailsView({
       {event.imageUrl && (
         <div className="relative w-full aspect-video rounded-xl overflow-hidden">
           <img
-            src={
+            src={getOptimizedImageUrl(
               event.imageUrl?.startsWith("http")
                 ? event.imageUrl
-                : `${SERVER_URL}${event.imageUrl}`
-            }
+                : `${SERVER_URL}${event.imageUrl}`,
+              1200
+            )}
             alt={event.title}
             className="w-full h-full object-cover"
           />

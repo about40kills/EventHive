@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar, MapPin, Users, Clock } from "lucide-react";
 import { format } from "date-fns";
 import { SERVER_URL } from "@/lib/api";
+import { getOptimizedImageUrl } from "@/lib/utils";
 
 interface EventCardProps {
   id: string;
@@ -72,7 +73,7 @@ export function EventCard({
     return null;
   };
 
-  const finalImageUrl = getImageUrl();
+  const finalImageUrl = getOptimizedImageUrl(getImageUrl() || undefined, 600);
 
   //show both buttons when:
   //there's no authenticated user(currentUserId == null)
