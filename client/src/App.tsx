@@ -40,6 +40,17 @@ import techWorkshop from '../../attached_assets/generated_images/Tech_workshop_t
 import networkingEvent from '../../attached_assets/generated_images/Corporate_networking_mixer_event_c61b902e.png';
 import artEvent from '../../attached_assets/generated_images/Art_gallery_exhibition_event_0dcb9354.png';
 
+// Scroll to top on route change
+function ScrollToTop() {
+    const [location] = useLocation();
+
+    useEffect(() => {
+        window.scrollTo(0, 0);
+    }, [location]);
+
+    return null;
+}
+
 function HomePage() {
     const { isAuthenticated, user } = useAuth();
     const [, setLocation] = useLocation();
@@ -573,6 +584,7 @@ function Router() {
                 onLogout={logout}
             />
             <main className="flex-1 flex flex-col">
+                <ScrollToTop />
                 <Switch>
                     <Route path="/" component={HomePage} />
                     <Route path="/events" component={EventsPage} />
