@@ -19,6 +19,10 @@ import { ForgotPasswordForm } from "./components/ForgotPasswordForm";
 import { ResetPasswordForm } from "./components/ResetPasswordForm";
 import { ConfirmationDialog } from "./components/ConfirmationDialog";
 import { About } from "./pages/About";
+import { PrivacyPolicy } from "./pages/legal/PrivacyPolicy";
+import { TermsOfService } from "./pages/legal/TermsOfService";
+import { CookiePolicy } from "./pages/legal/CookiePolicy";
+import { Support } from "./pages/support/Support";
 import { Button } from "./components/ui/button";
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
@@ -49,7 +53,7 @@ function HomePage() {
     }, [isAuthenticated, setLocation]);
 
     if (isAuthenticated) {
-        return null; 
+        return null;
     }
 
     return (
@@ -141,8 +145,8 @@ function EventsPage() {
                     {user?.role === 'organizer' ? 'My Events' : 'Discover Events'}
                 </h1>
                 <p className="text-muted-foreground">
-                    {user?.role === 'organizer' 
-                        ? 'Manage and view your created events' 
+                    {user?.role === 'organizer'
+                        ? 'Manage and view your created events'
                         : 'Find amazing events happening around you'
                     }
                 </p>
@@ -188,14 +192,14 @@ function EventsPage() {
             {!isLoading && events.length === 0 && (
                 <div className="text-center py-12">
                     <p className="text-muted-foreground">
-                        {user?.role === 'organizer' 
-                            ? 'You haven\'t created any events yet' 
+                        {user?.role === 'organizer'
+                            ? 'You haven\'t created any events yet'
                             : 'No events found matching your filters'
                         }
                     </p>
                     {user?.role === 'organizer' && (
-                        <Button 
-                            className="mt-4" 
+                        <Button
+                            className="mt-4"
                             onClick={() => setLocation('/create-event')}
                         >
                             Create Your First Event
@@ -311,23 +315,23 @@ function EventDetailsPage({ params }: { params: { id: string } }) {
         if (!user) {
             return 'login-required';
         }
-        
+
         if (isEventOrganizer) {
             return 'delete';
         }
-        
+
         if (user.role === 'organizer') {
             return 'organizer-no-register';
         }
-        
+
         if (isRegistered) {
             return 'cancel-registration';
         }
-        
+
         if (event.registeredCount >= event.capacity) {
             return 'waitlist';
         }
-        
+
         return 'register';
     };
 
@@ -581,6 +585,10 @@ function Router() {
                     <Route path="/events/:id/attendees" component={EventAttendeesPage} />
                     <Route path="/events/:id" component={EventDetailsPage} />
                     <Route path="/about" component={About} />
+                    <Route path="/legal/privacy" component={PrivacyPolicy} />
+                    <Route path="/legal/terms" component={TermsOfService} />
+                    <Route path="/legal/cookies" component={CookiePolicy} />
+                    <Route path="/support" component={Support} />
                     <Route path="/login">
                         <LoginForm />
                     </Route>
@@ -595,9 +603,9 @@ function Router() {
                     <Route path="/reset-password/:token">
                         {(params) => <ResetPasswordForm token={params.token} />}
                     </Route>
-                    <Route 
-                      path="/events/edit/:id" 
-                      component={(props: any) => <EditEventForm eventId={props.params.id} />} 
+                    <Route
+                        path="/events/edit/:id"
+                        component={(props: any) => <EditEventForm eventId={props.params.id} />}
                     />
                     <Route>
                         <div className="flex-1 flex items-center justify-center">

@@ -30,7 +30,9 @@ export function Footer() {
                 </Link>
               </li>
               <li>
-                <span className="text-muted-foreground hover:text-foreground cursor-pointer">For Organizers</span>
+                <Link href="/create-event">
+                  <span className="text-muted-foreground hover:text-foreground cursor-pointer">For Organizers</span>
+                </Link>
               </li>
             </ul>
           </div>
@@ -39,13 +41,19 @@ export function Footer() {
             <h3 className="font-semibold mb-4">Support</h3>
             <ul className="space-y-2 text-sm">
               <li>
-                <span className="text-muted-foreground hover:text-foreground cursor-pointer">Help Center</span>
+                <Link href="/support">
+                  <span className="text-muted-foreground hover:text-foreground cursor-pointer">Help Center</span>
+                </Link>
               </li>
               <li>
-                <span className="text-muted-foreground hover:text-foreground cursor-pointer">Contact Us</span>
+                <Link href="/support">
+                  <span className="text-muted-foreground hover:text-foreground cursor-pointer">Contact Us</span>
+                </Link>
               </li>
               <li>
-                <span className="text-muted-foreground hover:text-foreground cursor-pointer">FAQ</span>
+                <Link href="/support">
+                  <span className="text-muted-foreground hover:text-foreground cursor-pointer">FAQ</span>
+                </Link>
               </li>
             </ul>
           </div>
@@ -54,13 +62,19 @@ export function Footer() {
             <h3 className="font-semibold mb-4">Legal</h3>
             <ul className="space-y-2 text-sm">
               <li>
-                <span className="text-muted-foreground hover:text-foreground cursor-pointer">Privacy Policy</span>
+                <Link href="/legal/privacy">
+                  <span className="text-muted-foreground hover:text-foreground cursor-pointer">Privacy Policy</span>
+                </Link>
               </li>
               <li>
-                <span className="text-muted-foreground hover:text-foreground cursor-pointer">Terms of Service</span>
+                <Link href="/legal/terms">
+                  <span className="text-muted-foreground hover:text-foreground cursor-pointer">Terms of Service</span>
+                </Link>
               </li>
               <li>
-                <span className="text-muted-foreground hover:text-foreground cursor-pointer">Cookie Policy</span>
+                <Link href="/legal/cookies">
+                  <span className="text-muted-foreground hover:text-foreground cursor-pointer">Cookie Policy</span>
+                </Link>
               </li>
             </ul>
           </div>
@@ -69,9 +83,9 @@ export function Footer() {
         <div className="mt-8 pt-8 border-t text-center text-sm text-muted-foreground">
           <div className="flex items-center justify-center gap-4">
             <p>© 2025 EventHive. All rights reserved.</p>
-            <a 
-              href="https://github.com/about40kills" 
-              target="_blank" 
+            <a
+              href="https://github.com/about40kills"
+              target="_blank"
               rel="noopener noreferrer"
               className="text-muted-foreground hover:text-foreground transition-colors"
             >
