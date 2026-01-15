@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Upload, X, Calendar } from "lucide-react";
 import { useLocation } from "wouter";
@@ -44,6 +45,11 @@ const categories = [
   'Sports',
   'Education',
   'Networking',
+  'Lifestyle',
+  'Health & Wellness',
+  'Food & Drink',
+  'Travel & Adventure',
+  'Science & Innovation',
 ];
 
 const currencies = [
@@ -76,6 +82,7 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
   const [fetchingEvent, setFetchingEvent] = useState(true);
   const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isUnlimitedCapacity, setIsUnlimitedCapacity] = useState(false);
 
   const [formData, setFormData] = useState<EventFormData>({
     title: "",
@@ -92,8 +99,8 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
     allowedDomains: "",
     tags: "",
     isFree: true,
-    price: 0,
-    currency: 'USD',
+    price: undefined,
+    currency: 'GHS',
   });
 
   const hasInitialized = useRef(false);
@@ -153,9 +160,14 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
               allowedDomains: allowedDomainsString,
               tags: tagsString,
               isFree: eventData.isFree ?? true,
-              price: eventData.price || 0,
-              currency: eventData.currency || 'USD',
+              price: eventData.price || undefined,
+              currency: eventData.currency || 'GHS',
             });
+
+            if (eventData.capacity >= 1000000) {
+              setIsUnlimitedCapacity(true);
+            }
+
             hasInitialized.current = true;
           }
 
@@ -615,22 +627,39 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
                   />
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Label htmlFor="capacity">Capacity *</Label>
                   <Input
                     id="capacity"
-                    type="number"
+                    type={isUnlimitedCapacity ? "text" : "number"}
                     min="1"
-                    value={formData.capacity}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        capacity: parseInt(e.target.value),
-                      })
-                    }
-                    required
+                    disabled={isUnlimitedCapacity}
+                    value={isUnlimitedCapacity ? "Unlimited" : formData.capacity}
+                    onChange={(e) => setFormData({ ...formData, capacity: parseInt(e.target.value) })}
+                    required={!isUnlimitedCapacity}
+                    placeholder="Enter capacity"
                     data-testid="input-capacity"
                   />
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="unlimited"
+                      checked={isUnlimitedCapacity}
+                      onCheckedChange={(checked) => {
+                        setIsUnlimitedCapacity(checked as boolean);
+                        if (checked) {
+                          setFormData({ ...formData, capacity: 1000000 });
+                        } else {
+                          setFormData({ ...formData, capacity: 50 });
+                        }
+                      }}
+                    />
+                    <label
+                      htmlFor="unlimited"
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                    >
+                      Unlimited capacity
+                    </label>
+                  </div>
                 </div>
               </div>
 
@@ -654,13 +683,13 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
                   <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
                     <div className="flex gap-4">
                       <div className="flex-1 space-y-2">
-                        <Label htmlFor="price">Price *</Label>
                         <Input
                           id="price"
                           type="number"
                           min="0.01"
                           step="0.01"
-                          value={formData.price}
+                          placeholder="0.00"
+                          value={formData.price || ''}
                           onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) })}
                           required
                           data-testid="input-price"
@@ -690,12 +719,12 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
                       <div className="text-sm space-y-1 pt-2 border-t border-dashed border-muted-foreground/50">
                         <div className="flex justify-between text-muted-foreground">
                           <span>Platform Fee (5%)</span>
-                          <span>- {new Intl.NumberFormat('en-US', { style: 'currency', currency: formData.currency || 'USD' }).format(formData.price * 0.05)}</span>
+                          <span>- {new Intl.NumberFormat('en-US', { style: 'currency', currency: formData.currency || 'GHS' }).format((formData.price || 0) * 0.05)}</span>
                         </div>
                         <div className="flex justify-between font-medium">
                           <span>Estimated Earnings</span>
                           <span className="text-green-600">
-                            {new Intl.NumberFormat('en-US', { style: 'currency', currency: formData.currency || 'USD' }).format(formData.price * 0.95)}
+                            {new Intl.NumberFormat('en-US', { style: 'currency', currency: formData.currency || 'GHS' }).format((formData.price || 0) * 0.95)}
                           </span>
                         </div>
                         <p className="text-xs text-muted-foreground mt-2">

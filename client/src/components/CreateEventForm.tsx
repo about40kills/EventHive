@@ -5,6 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Calendar, Upload, X } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
@@ -97,9 +98,11 @@ export function CreateEventForm({ onSubmit, initialData, isLoading }: CreateEven
     allowedDomains: initialData?.allowedDomains || '',
     tags: initialData?.tags || '',
     isFree: initialData?.isFree ?? true,
-    price: initialData?.price || 0,
-    currency: initialData?.currency || 'USD',
+    price: initialData?.price || undefined,
+    currency: initialData?.currency || 'GHS',
   });
+
+  const [isUnlimitedCapacity, setIsUnlimitedCapacity] = useState(false);
 
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -189,17 +192,8 @@ export function CreateEventForm({ onSubmit, initialData, isLoading }: CreateEven
     if (!(formData.isFree ?? true) && !user?.paystackSubaccountCode) {
       toast({
         title: "Payout Account Required",
-        description: "You must set up your bank details to create paid events.",
+        description: "You must set up your bank details in Payout Settings to create paid events.",
         variant: "destructive",
-        action: (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setLocation('/dashboard')}
-          >
-            Go to Settings
-          </Button>
-        )
       });
       return;
     }
@@ -496,16 +490,40 @@ export function CreateEventForm({ onSubmit, initialData, isLoading }: CreateEven
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="capacity">Capacity *</Label>
-                  <Input
-                    id="capacity"
-                    type="number"
-                    min="1"
-                    value={formData.capacity}
-                    onChange={(e) => setFormData({ ...formData, capacity: parseInt(e.target.value) })}
-                    required
-                    data-testid="input-capacity"
-                  />
+                  <div className="space-y-3">
+                    <Label htmlFor="capacity">Capacity *</Label>
+                    <Input
+                      id="capacity"
+                      type={isUnlimitedCapacity ? "text" : "number"}
+                      min="1"
+                      disabled={isUnlimitedCapacity}
+                      value={isUnlimitedCapacity ? "Unlimited" : formData.capacity}
+                      onChange={(e) => setFormData({ ...formData, capacity: parseInt(e.target.value) })}
+                      required={!isUnlimitedCapacity}
+                      placeholder="Enter capacity"
+                      data-testid="input-capacity"
+                    />
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="unlimited"
+                        checked={isUnlimitedCapacity}
+                        onCheckedChange={(checked) => {
+                          setIsUnlimitedCapacity(checked as boolean);
+                          if (checked) {
+                            setFormData({ ...formData, capacity: 1000000 });
+                          } else {
+                            setFormData({ ...formData, capacity: 50 });
+                          }
+                        }}
+                      />
+                      <label
+                        htmlFor="unlimited"
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                      >
+                        Unlimited capacity
+                      </label>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -526,7 +544,7 @@ export function CreateEventForm({ onSubmit, initialData, isLoading }: CreateEven
 
                 {!(formData.isFree ?? true) && (
                   <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
-                    <div className="flex gap-4">
+                    <div className="flex flex-col md:flex-row gap-4">
                       <div className="flex-1 space-y-2">
                         <Label htmlFor="price">Price *</Label>
                         <Input
@@ -534,13 +552,14 @@ export function CreateEventForm({ onSubmit, initialData, isLoading }: CreateEven
                           type="number"
                           min="0.01"
                           step="0.01"
-                          value={formData.price}
+                          placeholder="0.00"
+                          value={formData.price || ''}
                           onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) })}
                           required
                           data-testid="input-price"
                         />
                       </div>
-                      <div className="w-1/3 space-y-2">
+                      <div className="w-full md:w-1/3 space-y-2">
                         <Label htmlFor="currency">Currency</Label>
                         <Select
                           value={formData.currency}
@@ -564,12 +583,12 @@ export function CreateEventForm({ onSubmit, initialData, isLoading }: CreateEven
                       <div className="text-sm space-y-1 pt-2 border-t border-dashed border-muted-foreground/50">
                         <div className="flex justify-between text-muted-foreground">
                           <span>Platform Fee (5%)</span>
-                          <span>- {new Intl.NumberFormat('en-US', { style: 'currency', currency: formData.currency || 'USD' }).format(formData.price * 0.05)}</span>
+                          <span>- {new Intl.NumberFormat('en-US', { style: 'currency', currency: formData.currency || 'GHS' }).format((formData.price || 0) * 0.05)}</span>
                         </div>
                         <div className="flex justify-between font-medium">
                           <span>Estimated Earnings</span>
                           <span className="text-green-600">
-                            {new Intl.NumberFormat('en-US', { style: 'currency', currency: formData.currency || 'USD' }).format(formData.price * 0.95)}
+                            {new Intl.NumberFormat('en-US', { style: 'currency', currency: formData.currency || 'GHS' }).format((formData.price || 0) * 0.95)}
                           </span>
                         </div>
                         <p className="text-xs text-muted-foreground mt-2">
