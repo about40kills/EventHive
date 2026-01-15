@@ -9,6 +9,7 @@ const fs = require('fs');
 const authRoutes = require("./routes/auth");
 const eventRoutes = require("./routes/events");
 const registrationRoutes = require("./routes/registrations");
+const paymentRoutes = require("./routes/payments");
 
 const app = express();
 
@@ -17,8 +18,24 @@ connectDB();
 
 // Middleware
 app.use(cors());
-app.use(express.json({ limit: '10mb' })); // Increased limit for Base64 images
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Handle Webhook raw body BEFORE global JSON parser
+// We skip specific JSON parsing for the webhook route so express.raw() in the route handler works
+app.use((req, res, next) => {
+  if (req.originalUrl === '/api/payments/webhook') {
+    next();
+  } else {
+    express.json({ limit: '10mb' })(req, res, next);
+  }
+});
+
+app.use((req, res, next) => {
+  if (req.originalUrl === '/api/payments/webhook') {
+    next();
+  } else {
+    express.urlencoded({ extended: true, limit: '10mb' })(req, res, next);
+  }
+});
 
 // Create uploads directory if it doesn't exist
 const uploadsDir = path.join(__dirname, 'uploads/events');
@@ -33,6 +50,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.use("/api/auth", authRoutes);
 app.use("/api/events", eventRoutes);
 app.use("/api/registrations", registrationRoutes);
+app.use("/api/payments", paymentRoutes);
 
 // Basic route
 app.get("/", (req, res) => {

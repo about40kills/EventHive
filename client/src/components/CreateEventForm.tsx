@@ -8,6 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Calendar, Upload, X } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
+import { useAuth } from "@/contexts/AuthContext";
 import { useCreateEvent } from "../hooks/useEvents";
 import { useToast } from "@/hooks/use-toast";
 import type { CreateEventForm as CreateEventFormType } from "../types/api";
@@ -35,6 +36,9 @@ export interface EventFormData {
   allowedDomains?: string;
   tags?: string;
   image?: File;
+  isFree?: boolean;
+  price?: number;
+  currency?: string;
 }
 
 const categories = [
@@ -52,7 +56,32 @@ const categories = [
   'Science & Innovation',
 ];
 
+
+const currencies = [
+  { code: 'USD', name: 'US Dollar' },
+  { code: 'EUR', name: 'Euro' },
+  { code: 'GBP', name: 'British Pound' },
+  { code: 'GHS', name: 'Ghanaian Cedi' },
+  { code: 'NGN', name: 'Nigerian Naira' },
+  { code: 'ZAR', name: 'South African Rand' },
+  { code: 'KES', name: 'Kenyan Shilling' },
+  { code: 'UGX', name: 'Ugandan Shilling' },
+  { code: 'TZS', name: 'Tanzanian Shilling' },
+  { code: 'RWF', name: 'Rwandan Franc' },
+  { code: 'XOF', name: 'West African CFA Franc' },
+  { code: 'XAF', name: 'Central African CFA Franc' },
+  { code: 'CAD', name: 'Canadian Dollar' },
+  { code: 'AUD', name: 'Australian Dollar' },
+  { code: 'JPY', name: 'Japanese Yen' },
+  { code: 'CNY', name: 'Chinese Yuan' },
+  { code: 'INR', name: 'Indian Rupee' },
+  { code: 'BRL', name: 'Brazilian Real' },
+  { code: 'AED', name: 'UAE Dirham' },
+  { code: 'SAR', name: 'Saudi Riyal' },
+];
+
 export function CreateEventForm({ onSubmit, initialData, isLoading }: CreateEventFormProps) {
+  const { user } = useAuth(); // Get user from auth context
   const [formData, setFormData] = useState<EventFormData>({
     title: initialData?.title || '',
     description: initialData?.description || '',
@@ -67,6 +96,9 @@ export function CreateEventForm({ onSubmit, initialData, isLoading }: CreateEven
     accessCode: initialData?.accessCode || '',
     allowedDomains: initialData?.allowedDomains || '',
     tags: initialData?.tags || '',
+    isFree: initialData?.isFree ?? true,
+    price: initialData?.price || 0,
+    currency: initialData?.currency || 'USD',
   });
 
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -100,49 +132,12 @@ export function CreateEventForm({ onSubmit, initialData, isLoading }: CreateEven
 
   // Check authentication on component mount
   useEffect(() => {
-    const checkAuth = async () => {
-      const token = localStorage.getItem('authToken');
-      if (!token) {
-        toast({
-          title: "Authentication required",
-          description: "Please log in to create an event.",
-          variant: "destructive",
-        });
-        setLocation('/login');
-        return;
-      }
-
-      try {
-        // Verify token is still valid
-        const response = await fetch(`${SERVER_URL}/api/auth/me`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-
-        if (!response.ok) {
-          // Token is invalid
-          localStorage.removeItem('authToken');
-          toast({
-            title: "Session expired",
-            description: "Please log in again to create an event.",
-            variant: "destructive",
-          });
-          setLocation('/login');
-          return;
-        }
-
-        // User is authenticated
-        setIsCheckingAuth(false);
-      } catch (error) {
-        console.error('Auth check failed:', error);
-        localStorage.removeItem('authToken');
-        setLocation('/login');
-      }
-    };
-
-    checkAuth();
-  }, [setLocation, toast]);
+    if (!user && !localStorage.getItem('authToken')) {
+      setLocation('/login');
+    } else {
+      setIsCheckingAuth(false);
+    }
+  }, [user, setLocation]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -189,6 +184,26 @@ export function CreateEventForm({ onSubmit, initialData, isLoading }: CreateEven
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Check for Payout Account if event is Paid
+    if (!(formData.isFree ?? true) && !user?.paystackSubaccountCode) {
+      toast({
+        title: "Payout Account Required",
+        description: "You must set up your bank details to create paid events.",
+        variant: "destructive",
+        action: (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setLocation('/dashboard')}
+          >
+            Go to Settings
+          </Button>
+        )
+      });
+      return;
+    }
+
     // Validate description before submitting
     const descError = validateDescription(formData.description);
     if (descError) {
@@ -224,6 +239,11 @@ export function CreateEventForm({ onSubmit, initialData, isLoading }: CreateEven
       submitData.append('isVirtual', formData.isVirtual.toString());
       submitData.append('capacity', formData.capacity.toString());
       submitData.append('status', 'published');
+      submitData.append('isFree', (formData.isFree ?? true).toString());
+      if (!(formData.isFree ?? true)) {
+        submitData.append('price', (formData.price || 0).toString());
+        submitData.append('currency', formData.currency || 'USD');
+      }
 
       // Handle tags
       if (formData.tags) {
@@ -487,6 +507,78 @@ export function CreateEventForm({ onSubmit, initialData, isLoading }: CreateEven
                     data-testid="input-capacity"
                   />
                 </div>
+              </div>
+
+              {/* Pricing Section */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="flex items-center justify-between p-4 border rounded-lg">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="isFree" className="cursor-pointer">Free Event</Label>
+                    <p className="text-sm text-muted-foreground">This event is free to attend</p>
+                  </div>
+                  <Switch
+                    id="isFree"
+                    checked={formData.isFree}
+                    onCheckedChange={(checked) => setFormData({ ...formData, isFree: checked })}
+                    data-testid="switch-free"
+                  />
+                </div>
+
+                {!(formData.isFree ?? true) && (
+                  <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
+                    <div className="flex gap-4">
+                      <div className="flex-1 space-y-2">
+                        <Label htmlFor="price">Price *</Label>
+                        <Input
+                          id="price"
+                          type="number"
+                          min="0.01"
+                          step="0.01"
+                          value={formData.price}
+                          onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) })}
+                          required
+                          data-testid="input-price"
+                        />
+                      </div>
+                      <div className="w-1/3 space-y-2">
+                        <Label htmlFor="currency">Currency</Label>
+                        <Select
+                          value={formData.currency}
+                          onValueChange={(value) => setFormData({ ...formData, currency: value })}
+                        >
+                          <SelectTrigger id="currency">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="max-h-[200px]">
+                            {currencies.map((curr) => (
+                              <SelectItem key={curr.code} value={curr.code}>
+                                {curr.code} ({curr.name})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    {formData.price && formData.price > 0 && (
+                      <div className="text-sm space-y-1 pt-2 border-t border-dashed border-muted-foreground/50">
+                        <div className="flex justify-between text-muted-foreground">
+                          <span>Platform Fee (5%)</span>
+                          <span>- {new Intl.NumberFormat('en-US', { style: 'currency', currency: formData.currency || 'USD' }).format(formData.price * 0.05)}</span>
+                        </div>
+                        <div className="flex justify-between font-medium">
+                          <span>Estimated Earnings</span>
+                          <span className="text-green-600">
+                            {new Intl.NumberFormat('en-US', { style: 'currency', currency: formData.currency || 'USD' }).format(formData.price * 0.95)}
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-2">
+                          * Payment processing fees may also apply. See <a href="/legal/terms" target="_blank" className="underline hover:text-primary">Terms of Service</a>.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

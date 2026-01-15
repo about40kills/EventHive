@@ -7,6 +7,13 @@ export interface User {
   role: "attendee" | "organizer";
   organizationType?: "individual" | "corporate";
   createdAt: string;
+  paystackSubaccountCode?: string;
+  bankDetails?: {
+    bankName: string;
+    accountNumber: string;
+    accountName: string;
+    bankCode: string;
+  };
 }
 
 export interface Event {
@@ -34,6 +41,9 @@ export interface Event {
     accessCode?: string;
     allowedDomains: string[];
   };
+  isFree: boolean;
+  price: number;
+  currency: string;
   createdAt: string;
 }
 
@@ -42,6 +52,8 @@ export interface Registration {
   user: string;
   event: Event;
   status: "confirmed" | "cancelled" | "waitlist";
+  paymentStatus: "pending" | "completed" | "failed" | "refunded" | "free";
+  amountPaid: number;
   registrationDate: string;
 }
 
@@ -107,6 +119,9 @@ export interface CreateEventForm {
   location: string;
   isVirtual: boolean;
   capacity: number;
+  isFree: boolean;
+  price: number;
+  currency: string;
   image?: string;
   tags: string[];
   status: "draft" | "published";

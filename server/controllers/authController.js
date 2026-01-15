@@ -14,19 +14,19 @@ const generateToken = (id) => {
 //routes POST /api/auth/register
 const register = async (req, res) => {
   try {
-    const errors = validationResult(req); 
+    const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({ errors: errors.array() });
     }
 
     const { name, email, password, role, organizationType } = req.body;
     if (!name || !email || !password || !role) {
-      return res.status(400).json({ message: 'Name, email, password, role fields are mandatory!'});
+      return res.status(400).json({ message: 'Name, email, password, role fields are mandatory!' });
     }
-    
+
     //validate organizationType if role is organizer
-    if (role === 'organizer' && !organizationType){
-      return res.status(400).json({message: 'Organization type is required for organizers'});
+    if (role === 'organizer' && !organizationType) {
+      return res.status(400).json({ message: 'Organization type is required for organizers' });
     }
 
     //prevent organizationType from being set by non organizers
@@ -40,10 +40,10 @@ const register = async (req, res) => {
       return res.status(400).json({ message: 'Please provide a valid email address' });
     }
 
-      // Password strength validation
-      if (!password || password.length < 8) {
-        return res.status(400).json({ message: 'Password must be at least 8 characters long' });
-      }
+    // Password strength validation
+    if (!password || password.length < 8) {
+      return res.status(400).json({ message: 'Password must be at least 8 characters long' });
+    }
 
     // Check if user exists
     const existingUser = await User.findOne({ email });
@@ -56,7 +56,7 @@ const register = async (req, res) => {
     const user = await User.create({
       name,
       email,
-      password, 
+      password,
       role,
       organizationType
     });
@@ -71,7 +71,9 @@ const register = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
-        organizationType: user.organizationType
+        organizationType: user.organizationType,
+        bankDetails: user.bankDetails,
+        paystackSubaccountCode: user.paystackSubaccountCode
       }
     });
   } catch (error) {
@@ -112,7 +114,9 @@ const login = async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
-        organizationType: user.organizationType
+        organizationType: user.organizationType,
+        bankDetails: user.bankDetails,
+        paystackSubaccountCode: user.paystackSubaccountCode
       }
     });
   } catch (error) {
@@ -131,7 +135,9 @@ const getMe = async (req, res) => {
         name: req.user.name,
         email: req.user.email,
         role: req.user.role,
-        organizationType: req.user.organizationType
+        organizationType: req.user.organizationType,
+        bankDetails: req.user.bankDetails,
+        paystackSubaccountCode: req.user.paystackSubaccountCode
       }
     });
   } catch (error) {
@@ -157,14 +163,14 @@ const forgotPassword = async (req, res) => {
 
     // Generate reset token
     const resetToken = crypto.randomBytes(32).toString('hex');
-    
+
     // Hash token and set to resetPasswordToken field
     const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
-    
+
     // Set token and expiration (24 hours)
     user.resetPasswordToken = hashedToken;
     user.resetPasswordExpires = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
-    
+
     await user.save();
 
     // Create reset URL
@@ -223,7 +229,7 @@ const verifyResetToken = async (req, res) => {
 const resetPassword = async (req, res) => {
   try {
     const { token, password } = req.body;
-    console.log('Reset Password Request Body:', { token: token ? 'provided' : 'missing', password: password ? 'provided' : 'missing'});
+    console.log('Reset Password Request Body:', { token: token ? 'provided' : 'missing', password: password ? 'provided' : 'missing' });
 
     if (!token || !password) {
       return res.status(400).json({ message: 'Token and password are required' });
@@ -248,10 +254,10 @@ const resetPassword = async (req, res) => {
     }
 
     // Set new password 
-    user.password = password; 
+    user.password = password;
     user.resetPasswordToken = undefined;
     user.resetPasswordExpires = undefined;
-    
+
     await user.save();
     console.log('Password reset successful, new password saved');
 

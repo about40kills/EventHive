@@ -202,6 +202,32 @@ class ApiClient {
     );
   }
 
+  // Payment methods
+  async createCheckoutSession(eventId: string): Promise<{ sessionId: string; url: string }> {
+    return this.request<{ sessionId: string; url: string }>("/payments/create-checkout-session", {
+      method: "POST",
+      body: JSON.stringify({ eventId }),
+    });
+  }
+
+  async getBanks(): Promise<any[]> {
+    return this.request<any[]>("/payments/banks");
+  }
+
+  async resolveAccount(accountNumber: string, bankCode: string): Promise<any> {
+    return this.request<any>("/payments/resolve-account", {
+      method: "POST",
+      body: JSON.stringify({ accountNumber, bankCode }),
+    });
+  }
+
+  async createSubaccount(data: { bankCode: string; accountNumber: string; businessName: string }): Promise<any> {
+    return this.request<any>("/payments/create-subaccount", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
   // Utility methods
   isAuthenticated(): boolean {
     return !!this.token;

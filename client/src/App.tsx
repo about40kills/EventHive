@@ -1,5 +1,6 @@
 import { Switch, Route } from "wouter";
 import { ArrowRight } from "lucide-react";
+import { apiClient } from "@/lib/api";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -33,6 +34,8 @@ import { useMyRegistrations, useRegisterForEvent, useCancelRegistration } from "
 import type { EventFilters as EventFiltersType } from "./types/api";
 import { EditEventForm } from "./components/EditEventForm";
 import { EventAttendeesPage } from "./components/EventAttendeesPage";
+import { PayoutSettings } from "./components/PayoutSettings";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs";
 
 // Import event images
 import businessEvent from '../../attached_assets/generated_images/Business_conference_presentation_event_e6f329f2.png';
@@ -115,6 +118,9 @@ function HomePage() {
                                 registeredCount={event.registeredCount}
                                 imageUrl={event.image || businessEvent}
                                 isVirtual={event.isVirtual}
+                                isFree={event.isFree}
+                                price={event.price}
+                                currency={event.currency}
                                 organizerName={event.organizer.name}
                                 organizerId={event.organizer._id}
                                 currentUserId={user?.id}
@@ -206,6 +212,9 @@ function EventsPage() {
                             registeredCount={event.registeredCount}
                             imageUrl={event.image || businessEvent}
                             isVirtual={event.isVirtual}
+                            isFree={event.isFree}
+                            price={event.price}
+                            currency={event.currency}
                             organizerName={event.organizer.name}
                             organizerId={event.organizer._id}
                             currentUserId={user?.id}
@@ -295,13 +304,28 @@ function EventDetailsPage({ params }: { params: { id: string } }) {
         }
 
         try {
-            await registerMutation.mutateAsync({ eventId: event._id });
-            toast({
-                title: "Registration successful!",
-                description: "You have been registered for this event.",
-            });
+            if (event.isFree) {
+                await registerMutation.mutateAsync({ eventId: event._id });
+                toast({
+                    title: "Registration successful!",
+                    description: "You have been registered for this event.",
+                });
+            } else {
+                // Handle payment for paid events
+                const { url } = await apiClient.createCheckoutSession(event._id);
+                if (url) {
+                    window.location.href = url;
+                } else {
+                    throw new Error("Failed to initiate payment");
+                }
+            }
         } catch (error) {
-            console.error('Registration failed:', error);
+            console.error('Registration/Payment failed:', error);
+            toast({
+                title: "Registration failed",
+                description: "Could not complete registration. Please try again.",
+                variant: "destructive",
+            });
         }
     };
 
@@ -386,6 +410,9 @@ function EventDetailsPage({ params }: { params: { id: string } }) {
                         name: event.organizer.name,
                         email: event.organizer.email,
                     },
+                    isFree: event.isFree,
+                    price: event.price,
+                    currency: event.currency,
                 }}
                 isRegistered={isRegistered}
                 canRegister={eventAction === 'register'}
@@ -454,6 +481,9 @@ function AttendeeDashboard() {
                                 registeredCount={registration.event.registeredCount}
                                 imageUrl={registration.event.image || businessEvent}
                                 isVirtual={registration.event.isVirtual}
+                                isFree={registration.event.isFree}
+                                price={registration.event.price}
+                                currency={registration.event.currency}
                                 organizerName={registration.event.organizer.name}
                                 organizerId={registration.event.organizer._id}
                                 currentUserId={user?.id}
@@ -483,6 +513,8 @@ function OrganizerDashboard() {
         status: e.status as 'draft' | 'published' | 'cancelled' | 'completed',
         registeredCount: e.registeredCount,
         capacity: e.capacity,
+        price: e.price,
+        currency: e.currency,
     }));
 
     const handleEdit = (eventId: string) => {
@@ -532,33 +564,46 @@ function OrganizerDashboard() {
                 </Button>
             </div>
 
-            <DashboardStats
-                role="organizer"
-                stats={{
-                    totalEvents: events.length,
-                    totalAttendees: events.reduce((sum, e) => sum + e.registeredCount, 0),
-                    activeEvents: events.filter(e => e.status === 'published').length,
-                    upcomingEvents: events.filter(e => new Date(e.date) > new Date()).length,
-                }}
-            />
+            <Tabs defaultValue="events" className="w-full">
+                <TabsList>
+                    <TabsTrigger value="events">My Events</TabsTrigger>
+                    <TabsTrigger value="payouts">Payout Settings</TabsTrigger>
+                </TabsList>
 
-            <div>
-                <h2 className="text-xl font-semibold mb-4">My Events</h2>
-                {isLoading ? (
-                    <div className="animate-pulse space-y-4">
-                        {[1, 2, 3].map((i) => (
-                            <div key={i} className="h-16 bg-muted rounded-lg" />
-                        ))}
-                    </div>
-                ) : (
-                    <EventManagementTable
-                        events={organizerEvents}
-                        onEdit={handleEdit}
-                        onDelete={handleDelete}
-                        onViewAttendees={handleViewAttendees}
+                <TabsContent value="events" className="space-y-8 mt-4 animate-in fade-in slide-in-from-left-4 duration-300">
+                    <DashboardStats
+                        role="organizer"
+                        stats={{
+                            totalEvents: events.length,
+                            totalAttendees: events.reduce((sum, e) => sum + e.registeredCount, 0),
+                            activeEvents: events.filter(e => e.status === 'published').length,
+                            upcomingEvents: events.filter(e => new Date(e.date) > new Date()).length,
+                        }}
                     />
-                )}
-            </div>
+
+                    <div>
+                        <h2 className="text-xl font-semibold mb-4">My Events</h2>
+                        {isLoading ? (
+                            <div className="animate-pulse space-y-4">
+                                {[1, 2, 3].map((i) => (
+                                    <div key={i} className="h-16 bg-muted rounded-lg" />
+                                ))}
+                            </div>
+                        ) : (
+                            <EventManagementTable
+                                events={organizerEvents}
+                                onEdit={handleEdit}
+                                onDelete={handleDelete}
+                                onViewAttendees={handleViewAttendees}
+                            />
+                        )}
+                    </div>
+                </TabsContent>
+
+                <TabsContent value="payouts" className="mt-4 animate-in fade-in slide-in-from-right-4 duration-300">
+                    <PayoutSettings />
+                </TabsContent>
+            </Tabs>
 
             <ConfirmationDialog
                 open={!!deleteEventId}

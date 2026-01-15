@@ -26,7 +26,7 @@ const eventSchema = new mongoose.Schema({
   date: {
     type: Date,
     required: [true, 'Date is required'],
-    set: function(value) { 
+    set: function (value) {
       // Handle DD/MM/YYYY format
       if (typeof value === 'string' && value.includes('/')) {
         const parts = value.split('/');
@@ -58,6 +58,26 @@ const eventSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  isFree: {
+    type: Boolean,
+    default: true
+  },
+  price: {
+    type: Number,
+    default: 0,
+    min: [0, 'Price must be positive'],
+    validate: {
+      validator: function (v) {
+        return this.isFree || (v > 0);
+      },
+      message: 'Price must be greater than 0 for paid events'
+    }
+  },
+  currency: {
+    type: String,
+    default: 'GHS',
+    enum: ['USD', 'EUR', 'GBP', 'NGN', 'GHS', 'ZAR', 'KES']
+  },
   image: {
     type: String
   },
@@ -88,9 +108,9 @@ const eventSchema = new mongoose.Schema({
 });
 
 // Create text search index for title and description
-eventSchema.index({ 
-  title: 'text', 
-  description: 'text' 
+eventSchema.index({
+  title: 'text',
+  description: 'text'
 });
 
 // Index for common queries

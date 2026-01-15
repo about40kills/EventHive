@@ -19,6 +19,9 @@ interface EventCardProps {
   registeredCount: number;
   imageUrl?: string;
   isVirtual?: boolean;
+  isFree?: boolean;
+  price?: number;
+  currency?: string;
   organizerName: string;
   organizerId?: string;
   currentUserId?: string;
@@ -39,6 +42,9 @@ export function EventCard({
   registeredCount,
   imageUrl,
   isVirtual,
+  isFree,
+  price,
+  currency,
   organizerName,
   organizerId,
   currentUserId,
@@ -106,6 +112,9 @@ export function EventCard({
             {isVirtual && (
               <Badge variant="secondary" data-testid={`badge-virtual-${id}`}>Virtual</Badge>
             )}
+            <Badge variant={isFree ? "secondary" : "default"} className={!isFree ? "bg-green-600 hover:bg-green-700" : ""}>
+              {isFree ? 'Free' : new Intl.NumberFormat('en-US', { style: 'currency', currency: currency || 'USD' }).format(price || 0)}
+            </Badge>
           </div>
         </div>
       )}

@@ -27,6 +27,9 @@ export interface EventFormData {
   tags?: string;
   image?: File;
   removeImage?: boolean;
+  isFree?: boolean;
+  price?: number;
+  currency?: string;
 }
 
 interface EditEventFormProps {
@@ -41,6 +44,29 @@ const categories = [
   'Sports',
   'Education',
   'Networking',
+];
+
+const currencies = [
+  { code: 'USD', name: 'US Dollar' },
+  { code: 'EUR', name: 'Euro' },
+  { code: 'GBP', name: 'British Pound' },
+  { code: 'GHS', name: 'Ghanaian Cedi' },
+  { code: 'NGN', name: 'Nigerian Naira' },
+  { code: 'ZAR', name: 'South African Rand' },
+  { code: 'KES', name: 'Kenyan Shilling' },
+  { code: 'UGX', name: 'Ugandan Shilling' },
+  { code: 'TZS', name: 'Tanzanian Shilling' },
+  { code: 'RWF', name: 'Rwandan Franc' },
+  { code: 'XOF', name: 'West African CFA Franc' },
+  { code: 'XAF', name: 'Central African CFA Franc' },
+  { code: 'CAD', name: 'Canadian Dollar' },
+  { code: 'AUD', name: 'Australian Dollar' },
+  { code: 'JPY', name: 'Japanese Yen' },
+  { code: 'CNY', name: 'Chinese Yuan' },
+  { code: 'INR', name: 'Indian Rupee' },
+  { code: 'BRL', name: 'Brazilian Real' },
+  { code: 'AED', name: 'UAE Dirham' },
+  { code: 'SAR', name: 'Saudi Riyal' },
 ];
 
 export function EditEventForm({ eventId }: EditEventFormProps) {
@@ -65,6 +91,9 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
     accessCode: "",
     allowedDomains: "",
     tags: "",
+    isFree: true,
+    price: 0,
+    currency: 'USD',
   });
 
   const hasInitialized = useRef(false);
@@ -123,7 +152,9 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
               accessCode: accessControl.accessCode || "",
               allowedDomains: allowedDomainsString,
               tags: tagsString,
-
+              isFree: eventData.isFree ?? true,
+              price: eventData.price || 0,
+              currency: eventData.currency || 'USD',
             });
             hasInitialized.current = true;
           }
@@ -257,6 +288,11 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
       submitData.append('location', formData.location);
       submitData.append('isVirtual', formData.isVirtual.toString());
       submitData.append('capacity', formData.capacity.toString());
+      submitData.append('isFree', (formData.isFree ?? true).toString());
+      if (!(formData.isFree ?? true)) {
+        submitData.append('price', (formData.price || 0).toString());
+        submitData.append('currency', formData.currency || 'USD');
+      }
 
       // Handle tags
       let tags: string[] = [];
@@ -596,6 +632,79 @@ export function EditEventForm({ eventId }: EditEventFormProps) {
                     data-testid="input-capacity"
                   />
                 </div>
+              </div>
+
+              {/* Pricing Section */}
+              {/* Pricing Section */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="flex items-center justify-between p-4 border rounded-lg">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="isFree" className="cursor-pointer">Free Event</Label>
+                    <p className="text-sm text-muted-foreground">This event is free to attend</p>
+                  </div>
+                  <Switch
+                    id="isFree"
+                    checked={formData.isFree}
+                    onCheckedChange={(checked) => setFormData({ ...formData, isFree: checked })}
+                    data-testid="switch-free"
+                  />
+                </div>
+
+                {!(formData.isFree ?? true) && (
+                  <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
+                    <div className="flex gap-4">
+                      <div className="flex-1 space-y-2">
+                        <Label htmlFor="price">Price *</Label>
+                        <Input
+                          id="price"
+                          type="number"
+                          min="0.01"
+                          step="0.01"
+                          value={formData.price}
+                          onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) })}
+                          required
+                          data-testid="input-price"
+                        />
+                      </div>
+                      <div className="w-1/3 space-y-2">
+                        <Label htmlFor="currency">Currency</Label>
+                        <Select
+                          value={formData.currency}
+                          onValueChange={(value) => setFormData({ ...formData, currency: value })}
+                        >
+                          <SelectTrigger id="currency">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="max-h-[200px]">
+                            {currencies.map((curr) => (
+                              <SelectItem key={curr.code} value={curr.code}>
+                                {curr.code} ({curr.name})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    {formData.price && formData.price > 0 && (
+                      <div className="text-sm space-y-1 pt-2 border-t border-dashed border-muted-foreground/50">
+                        <div className="flex justify-between text-muted-foreground">
+                          <span>Platform Fee (5%)</span>
+                          <span>- {new Intl.NumberFormat('en-US', { style: 'currency', currency: formData.currency || 'USD' }).format(formData.price * 0.05)}</span>
+                        </div>
+                        <div className="flex justify-between font-medium">
+                          <span>Estimated Earnings</span>
+                          <span className="text-green-600">
+                            {new Intl.NumberFormat('en-US', { style: 'currency', currency: formData.currency || 'USD' }).format(formData.price * 0.95)}
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-2">
+                          * Payment processing fees may also apply. See <a href="/legal/terms" target="_blank" className="underline hover:text-primary">Terms of Service</a>.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

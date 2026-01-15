@@ -24,6 +24,8 @@ interface Event {
   status: 'draft' | 'published' | 'cancelled' | 'completed';
   registeredCount: number;
   capacity: number;
+  price?: number;
+  currency?: string;
 }
 
 interface EventManagementTableProps {
@@ -59,6 +61,9 @@ export function EventManagementTable({ events, onEdit, onDelete, onViewAttendees
                 <Badge className={statusColors[event.status]}>{event.status}</Badge>
               </div>
               <div className="text-sm">Registered: {event.registeredCount}/{event.capacity}</div>
+              <div className="text-sm font-medium text-green-700">
+                Revenue: {new Intl.NumberFormat('en-US', { style: 'currency', currency: event.currency || 'USD' }).format((event.price || 0) * event.registeredCount)}
+              </div>
               <div className="flex gap-2 justify-end">
                 <Button variant="ghost" size="icon" onClick={() => onEdit?.(event.id)}>
                   <Edit className="h-4 w-4" />
@@ -97,6 +102,7 @@ export function EventManagementTable({ events, onEdit, onDelete, onViewAttendees
             <TableHead>Date</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Registered</TableHead>
+            <TableHead>Revenue</TableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -116,6 +122,9 @@ export function EventManagementTable({ events, onEdit, onDelete, onViewAttendees
                   <Badge className={statusColors[event.status]}>{event.status}</Badge>
                 </TableCell>
                 <TableCell>{event.registeredCount}/{event.capacity}</TableCell>
+                <TableCell className="font-medium text-green-700">
+                  {new Intl.NumberFormat('en-US', { style: 'currency', currency: event.currency || 'USD' }).format((event.price || 0) * event.registeredCount)}
+                </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
                     <Button variant="ghost" size="icon" onClick={() => onEdit?.(event.id)}>

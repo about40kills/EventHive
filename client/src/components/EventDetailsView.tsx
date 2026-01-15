@@ -25,6 +25,9 @@ interface EventDetailsViewProps {
     isVirtual?: boolean;
     isPrivate?: boolean;
     tags?: string[];
+    isFree?: boolean;
+    price?: number;
+    currency?: string;
     organizer: {
       name: string;
       email: string;
@@ -87,7 +90,7 @@ export function EventDetailsView({
       case 'register':
         return (
           <Button className="w-full" onClick={onRegister} data-testid="button-register">
-            Register for Event
+            {event.isFree ? 'Register for Event' : `Buy Ticket (${new Intl.NumberFormat('en-US', { style: 'currency', currency: event.currency || 'USD' }).format(event.price || 0)})`}
           </Button>
         );
 
@@ -209,7 +212,6 @@ export function EventDetailsView({
                 </div>
 
                 <div className="flex items-start gap-3">
-                  <Users className="h-5 w-5 text-muted-foreground mt-0.5" />
                   <div className="flex-1">
                     <p className="font-medium" data-testid="text-capacity">
                       {event.registeredCount} / {event.capacity} registered
@@ -228,6 +230,16 @@ export function EventDetailsView({
                         style={{ width: `${(event.registeredCount / event.capacity) * 100}%` }}
                       />
                     </div>
+                  </div>
+                </div>
+
+                {/* Price Display */}
+                <div className="flex items-start gap-3 pt-4 border-t">
+                  <div className="flex-1 flex justify-between items-center">
+                    <span className="font-medium text-lg">Price</span>
+                    <span className="text-2xl font-bold text-primary">
+                      {event.isFree ? 'Free' : `${new Intl.NumberFormat('en-US', { style: 'currency', currency: event.currency || 'USD' }).format(event.price || 0)}`}
+                    </span>
                   </div>
                 </div>
               </div>

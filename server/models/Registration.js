@@ -16,6 +16,18 @@ const registrationSchema = new mongoose.Schema({
     enum: ['confirmed', 'cancelled', 'waitlist'],
     default: 'confirmed'
   },
+  paymentStatus: {
+    type: String,
+    enum: ['pending', 'completed', 'failed', 'refunded', 'free'],
+    default: 'free'
+  },
+  paymentId: {
+    type: String
+  },
+  amountPaid: {
+    type: Number,
+    default: 0
+  },
   registrationDate: {
     type: Date,
     default: Date.now

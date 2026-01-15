@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, ReactNode } from "react";
 
 export interface Toast {
   id: string;
   title?: string;
   description?: string;
+  action?: ReactNode;
   variant?: "default" | "destructive";
 }
 
@@ -16,10 +17,11 @@ export function useToast() {
   const toast = ({
     title,
     description,
+    action,
     variant = "default",
   }: Omit<Toast, "id">) => {
     const id = (++toastId).toString();
-    const newToast: Toast = { id, title, description, variant };
+    const newToast: Toast = { id, title, description, action, variant };
 
     toasts.push(newToast);
     forceUpdate({});

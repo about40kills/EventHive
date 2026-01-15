@@ -9,6 +9,7 @@ interface AuthContextType {
     login: (credentials: LoginForm) => Promise<void>;
     register: (userData: RegisterForm) => Promise<void>;
     logout: () => void;
+    refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -88,6 +89,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setUser(null);
     };
 
+    const refreshUser = async () => {
+        try {
+            if (apiClient.isAuthenticated()) {
+                const response = await apiClient.getMe();
+                if (response.success) {
+                    setUser(response.user);
+                }
+            }
+        } catch (error) {
+            console.error('Refresh user failed:', error);
+        }
+    };
+
     const value: AuthContextType = {
         user,
         isAuthenticated,
@@ -95,6 +109,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         login,
         register,
         logout,
+        refreshUser,
     };
 
     return (

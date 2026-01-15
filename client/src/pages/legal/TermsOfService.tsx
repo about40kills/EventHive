@@ -45,6 +45,30 @@ export function TermsOfService() {
                             including without limitation if you breach the Terms.
                         </p>
                     </section>
+
+                    <section>
+                        <h2 className="text-xl font-semibold mb-2">6. Fees and Payments</h2>
+                        <div className="text-muted-foreground space-y-4">
+                            <p>
+                                EventHive charges service fees for the use of our platform to sell tickets or register attendees. These fees are charged to the Event Organizer and may be passed on to the Attendee at the Organizer's discretion.
+                            </p>
+                            <div>
+                                <h3 className="font-medium text-foreground mb-1">Paid Events</h3>
+                                <p>
+                                    For events where the Organizer charges a ticket price ("Paid Events"), EventHive charges a platform service fee of <strong>5% of the ticket price</strong> plus any applicable payment processing fees. These fees are deducted automatically from the revenue generated.
+                                </p>
+                            </div>
+                            <div>
+                                <h3 className="font-medium text-foreground mb-1">Free Events</h3>
+                                <p>
+                                    For events where the Organizer does not charge a ticket price ("Free Events"), EventHive charges a platform service fee of <strong>0%</strong>. Creating and hosting listings for free events is currently complimentary.
+                                </p>
+                            </div>
+                            <p className="text-sm">
+                                * Fees are subject to change with notice. All financial transactions are processed securely via our third-party payment processor, Paystack.
+                            </p>
+                        </div>
+                    </section>
                 </CardContent>
             </Card>
         </div>
