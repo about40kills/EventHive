@@ -1,4 +1,5 @@
 import { Switch, Route } from "wouter";
+import { ArrowRight } from "lucide-react";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -6,7 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { Header } from "./components/Header";
 import { Footer } from "./components/Footer";
-import { Hero } from "./components/Hero";
+// import { Hero } from "./components/Hero";
 import { EventCard } from "./components/EventCard";
 import { EventFilters } from "./components/EventFilters";
 import { LoginForm } from "./components/LoginForm";
@@ -51,6 +52,10 @@ function ScrollToTop() {
     return null;
 }
 
+
+import { HeroModern } from "./components/landing/HeroModern";
+import { FeaturesGrid } from "./components/landing/FeaturesGrid";
+
 function HomePage() {
     const { isAuthenticated, user } = useAuth();
     const [, setLocation] = useLocation();
@@ -68,65 +73,76 @@ function HomePage() {
     }
 
     return (
-        <div className="min-h-screen flex flex-col">
-            <div className="flex-1">
-                <Hero onSearch={(query) => {
-                    setLocation(`/events?search=${encodeURIComponent(query)}`);
-                }} />
+        <div className="min-h-screen flex flex-col bg-background">
+            <HeroModern
+                onCtaClick={() => setLocation('/events')}
+                onSecondaryCtaClick={() => setLocation('/login?tab=register_organizer')}
+            />
 
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 space-y-16">
-                    <section>
-                        <div className="text-center mb-12">
-                            <h2 className="text-3xl font-bold mb-4">Featured Events</h2>
-                            <p className="text-muted-foreground">Discover popular events happening soon</p>
-                        </div>
-                        {isLoading ? (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {[1, 2, 3].map((i) => (
-                                    <div key={i} className="h-64 bg-muted animate-pulse rounded-lg" />
-                                ))}
-                            </div>
-                        ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {featuredEvents.map((event) => (
-                                    <EventCard
-                                        key={event._id}
-                                        id={event._id}
-                                        title={event.title}
-                                        description={event.description}
-                                        category={event.category}
-                                        eventType={event.eventType}
-                                        date={new Date(event.date)}
-                                        time={event.time}
-                                        location={event.location}
-                                        capacity={event.capacity}
-                                        registeredCount={event.registeredCount}
-                                        imageUrl={event.image || businessEvent}
-                                        isVirtual={event.isVirtual}
-                                        organizerName={event.organizer.name}
-                                        organizerId={event.organizer._id}
-                                        currentUserId={user?.id}
-                                        onRegister={() => setLocation(`/events/${event._id}`)}
-                                        onViewDetails={() => setLocation(`/events/${event._id}`)}
-                                    />
-                                ))}
-                            </div>
-                        )}
-                    </section>
+            <FeaturesGrid />
 
-                    <section className="bg-gradient-to-br from-primary/10 to-chart-2/10 rounded-2xl p-8 sm:p-12">
-                        <div className="max-w-3xl mx-auto text-center space-y-6">
-                            <h2 className="text-3xl font-bold">For Event Organizers</h2>
-                            <p className="text-lg text-muted-foreground">
-                                Create and manage amazing events with our powerful platform. Track registrations, manage attendees, and grow your community.
-                            </p>
-                            <Button size="lg" onClick={() => setLocation('/register')} data-testid="button-get-started">
-                                Get Started
-                            </Button>
-                        </div>
-                    </section>
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+                <div className="flex items-center justify-between mb-10">
+                    <div>
+                        <h2 className="text-3xl font-bold mb-2">Trending Now</h2>
+                        <p className="text-muted-foreground">Don't miss the hottest events of the week.</p>
+                    </div>
+                    <Button variant="ghost" onClick={() => setLocation('/events')} className="group">
+                        View All Events <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                    </Button>
                 </div>
+
+                {isLoading ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        {[1, 2, 3].map((i) => (
+                            <div key={i} className="h-[400px] bg-muted animate-pulse rounded-2xl" />
+                        ))}
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        {featuredEvents.map((event) => (
+                            <EventCard
+                                key={event._id}
+                                id={event._id}
+                                title={event.title}
+                                description={event.description}
+                                category={event.category}
+                                eventType={event.eventType}
+                                date={new Date(event.date)}
+                                time={event.time}
+                                location={event.location}
+                                capacity={event.capacity}
+                                registeredCount={event.registeredCount}
+                                imageUrl={event.image || businessEvent}
+                                isVirtual={event.isVirtual}
+                                organizerName={event.organizer.name}
+                                organizerId={event.organizer._id}
+                                currentUserId={user?.id}
+                                onRegister={() => setLocation(`/events/${event._id}`)}
+                                onViewDetails={() => setLocation(`/events/${event._id}`)}
+                            />
+                        ))}
+                    </div>
+                )}
             </div>
+
+            <section className="bg-muted py-24 mb-0">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+                    <h2 className="text-3xl md:text-4xl font-bold mb-6">Ready to Create Your Own Experience?</h2>
+                    <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-10">
+                        Join thousands of organizers who use EventHive to run successful events.
+                        From ticketing to check-in, we've got you covered.
+                    </p>
+                    <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                        <Button size="lg" className="px-8" onClick={() => setLocation('/register')}>
+                            Start for Free
+                        </Button>
+                        <Button size="lg" variant="outline" onClick={() => setLocation('/about')}>
+                            Learn More
+                        </Button>
+                    </div>
+                </div>
+            </section>
         </div>
     );
 }
@@ -574,6 +590,8 @@ function CreateEventPage() {
 
 function Router() {
     const { user, isAuthenticated, logout } = useAuth();
+    const [location] = useLocation();
+    const isHome = location === '/';
 
     return (
         <div className="min-h-screen flex flex-col">
@@ -583,7 +601,7 @@ function Router() {
                 userName={user?.name || ''}
                 onLogout={logout}
             />
-            <main className="flex-1 flex flex-col">
+            <main className={`flex-1 flex flex-col ${!isHome ? 'pt-16' : ''}`}>
                 <ScrollToTop />
                 <Switch>
                     <Route path="/" component={HomePage} />
