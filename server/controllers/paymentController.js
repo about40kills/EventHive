@@ -369,11 +369,7 @@ exports.handleWebhook = async (req, res) => {
             const ticketCode = `EH-${eventId}-${userId}-${reference}`;
             const qrUrl = `${process.env.CLIENT_URL}/events/verify?code=${ticketCode}`;
 
-            // Create new registration for every successful payment to allow multiple purchases
-            // (Previously we checked for existing, but now with multi-tickets/orders, new is better?)
-            // But to avoid spam, we'll check if a PaymentID matches.
-            // Actually, Paystack reference is unique per transaction.
-
+            // 1. Create Registration
             await Registration.create({
                 event: eventId,
                 user: userId,
@@ -382,20 +378,42 @@ exports.handleWebhook = async (req, res) => {
                 paymentId: reference,
                 amountPaid: amount / 100,
                 tickets: ticketDetails,
-                qrCode: ticketCode // Save simple code
+                qrCode: ticketCode
             });
 
             console.log(`Payment successful for Event ${eventId} by User ${userId}`);
 
-            // Send Confirmation Email
+            // 2. Update Event Stats (registeredCount & ticket sales)
             try {
-                const user = await User.findById(userId);
                 const eventDoc = await Event.findById(eventId);
-                if (user && eventDoc) {
-                    await sendRegistrationConfirmation(user.email, eventDoc, qrUrl, ticketDetails);
+                if (eventDoc) {
+                    // Update total valid registrations count
+                    // We can either increment or count documents. Incrementing is faster here.
+                    eventDoc.registeredCount = (eventDoc.registeredCount || 0) + 1;
+
+                    // Update ticket tiers sold count
+                    if (ticketDetails.length > 0 && eventDoc.ticketTiers) {
+                        ticketDetails.forEach(purchasedTicket => {
+                            const tierIndex = eventDoc.ticketTiers.findIndex(
+                                t => t.name === purchasedTicket.name || (t._id && t._id.toString() === purchasedTicket._id)
+                            );
+                            if (tierIndex !== -1) {
+                                eventDoc.ticketTiers[tierIndex].sold = (eventDoc.ticketTiers[tierIndex].sold || 0) + Number(purchasedTicket.quantity);
+                            }
+                        });
+                    }
+
+                    await eventDoc.save();
+                    console.log(`Updated stats for Event ${eventId}`);
+
+                    // 3. Send Confirmation Email
+                    const user = await User.findById(userId);
+                    if (user) {
+                        await sendRegistrationConfirmation(user.email, eventDoc, qrUrl, ticketDetails);
+                    }
                 }
-            } catch (emailErr) {
-                console.error('Error sending confirmation email:', emailErr);
+            } catch (statsErr) {
+                console.error('Error updating event stats or sending email:', statsErr);
             }
         }
     } catch (err) {

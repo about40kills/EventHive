@@ -1,4 +1,5 @@
 const Event = require('../models/Event');
+const Registration = require('../models/Registration');
 const { validationResult } = require('express-validator');
 const { storage } = require('../config/cloudinary');
 const multer = require('multer');
