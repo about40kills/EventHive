@@ -28,6 +28,13 @@ interface Event {
   price?: number;
   currency?: string;
   isFree: boolean;
+  ticketTiers?: Array<{
+    name: string;
+    price: number;
+    quantity: number;
+    sold?: number;
+    description?: string;
+  }>;
 }
 
 interface EventManagementTableProps {
@@ -134,7 +141,11 @@ export function EventManagementTable({ events, onEdit, onDelete, onViewAttendees
                 <TableCell>{event.registeredCount}/{event.capacity >= 1000000 ? '∞' : event.capacity}</TableCell>
                 <TableCell className="font-medium text-green-700">
                   {!event.isFree ? (
-                    new Intl.NumberFormat('en-US', { style: 'currency', currency: event.currency || 'USD' }).format((event.price || 0) * event.registeredCount)
+                    new Intl.NumberFormat('en-US', { style: 'currency', currency: event.currency || 'USD' }).format(
+                      event.ticketTiers && event.ticketTiers.length > 0
+                        ? event.ticketTiers.reduce((acc, tier) => acc + ((tier.sold || 0) * tier.price), 0)
+                        : (event.price || 0) * event.registeredCount
+                    )
                   ) : (
                     <span className="text-muted-foreground">-</span>
                   )}

@@ -350,10 +350,10 @@ exports.handleWebhook = async (req, res) => {
     }
 
     // Validate event
-    // Req.body is a Buffer because of express.raw() in routes
     const hash = crypto.createHmac('sha512', secretKey).update(req.body).digest('hex');
 
     if (hash !== req.headers['x-paystack-signature']) {
+        console.error('Invalid Paystack signature');
         return res.status(400).send('Invalid signature');
     }
 
@@ -363,57 +363,83 @@ exports.handleWebhook = async (req, res) => {
         // Handle the event
         if (event.event === 'charge.success') {
             const { metadata, reference, amount } = event.data;
+
+            console.log('Webhook received for charge.success:', { reference, metadata });
+
             const { eventId, userId, ticketDetails: ticketDetailsStr } = metadata;
 
-            const ticketDetails = ticketDetailsStr ? JSON.parse(ticketDetailsStr) : [];
+            // Robust parsing of ticket details
+            let ticketDetails = [];
+            try {
+                ticketDetails = ticketDetailsStr ? JSON.parse(ticketDetailsStr) : [];
+            } catch (e) {
+                console.error('Error parsing ticketDetails from metadata:', e);
+            }
+
             const ticketCode = `EH-${eventId}-${userId}-${reference}`;
             const qrUrl = `${process.env.CLIENT_URL}/events/verify?code=${ticketCode}`;
 
+            // Check if registration already exists (idempotency)
+            const existingReg = await Registration.findOne({ paymentId: reference });
+            if (existingReg) {
+                console.log(`Registration already exists for ref ${reference}, skipping.`);
+                return res.status(200).send();
+            }
+
             // 1. Create Registration
-            await Registration.create({
-                event: eventId,
-                user: userId,
-                status: 'confirmed',
-                paymentStatus: 'completed',
-                paymentId: reference,
-                amountPaid: amount / 100,
-                tickets: ticketDetails,
-                qrCode: ticketCode
-            });
-
-            console.log(`Payment successful for Event ${eventId} by User ${userId}`);
-
-            // 2. Update Event Stats (registeredCount & ticket sales)
             try {
-                const eventDoc = await Event.findById(eventId);
-                if (eventDoc) {
-                    // Update total valid registrations count
-                    // We can either increment or count documents. Incrementing is faster here.
-                    eventDoc.registeredCount = (eventDoc.registeredCount || 0) + 1;
+                await Registration.create({
+                    event: eventId,
+                    user: userId,
+                    status: 'confirmed',
+                    paymentStatus: 'completed',
+                    paymentId: reference,
+                    amountPaid: amount / 100,
+                    tickets: ticketDetails,
+                    qrCode: ticketCode
+                });
+                console.log(`Registration created for Event ${eventId}, User ${userId}`);
+            } catch (regError) {
+                console.error('CRITICAL: Failed to create registration:', regError);
+                // We still attempt to update stats/send email if possible? No, implies failure.
+                // But we should probably return 200 to Paystack to stop retries if it's a permanent logical error.
+                return res.status(200).send();
+            }
 
-                    // Update ticket tiers sold count
-                    if (ticketDetails.length > 0 && eventDoc.ticketTiers) {
-                        ticketDetails.forEach(purchasedTicket => {
-                            const tierIndex = eventDoc.ticketTiers.findIndex(
-                                t => t.name === purchasedTicket.name || (t._id && t._id.toString() === purchasedTicket._id)
-                            );
-                            if (tierIndex !== -1) {
-                                eventDoc.ticketTiers[tierIndex].sold = (eventDoc.ticketTiers[tierIndex].sold || 0) + Number(purchasedTicket.quantity);
-                            }
-                        });
-                    }
+            // 2. Update Event Stats (Atomic Updates)
+            try {
+                // Increment total registered count
+                await Event.updateOne({ _id: eventId }, { $inc: { registeredCount: 1 } });
 
-                    await eventDoc.save();
-                    console.log(`Updated stats for Event ${eventId}`);
+                // Update ticket tiers sold count if applicable
+                if (ticketDetails.length > 0) {
+                    const bulkOps = ticketDetails.map(t => ({
+                        updateOne: {
+                            filter: { _id: eventId, "ticketTiers.name": t.name },
+                            update: { $inc: { "ticketTiers.$.sold": Number(t.quantity) } }
+                        }
+                    }));
 
-                    // 3. Send Confirmation Email
-                    const user = await User.findById(userId);
-                    if (user) {
-                        await sendRegistrationConfirmation(user.email, eventDoc, qrUrl, ticketDetails);
+                    if (bulkOps.length > 0) {
+                        const bulkResult = await Event.bulkWrite(bulkOps);
+                        console.log('Bulk write result for tickets:', bulkResult);
                     }
                 }
+                console.log(`Stats updated for Event ${eventId}`);
             } catch (statsErr) {
-                console.error('Error updating event stats or sending email:', statsErr);
+                console.error('Error updating event stats:', statsErr);
+            }
+
+            // 3. Send Confirmation Email
+            try {
+                const user = await User.findById(userId);
+                const eventDoc = await Event.findById(eventId);
+                if (user && eventDoc) {
+                    await sendRegistrationConfirmation(user.email, eventDoc, qrUrl, ticketDetails);
+                    console.log(`Confirmation email sent to ${user.email}`);
+                }
+            } catch (emailErr) {
+                console.error('Error sending confirmation email:', emailErr);
             }
         }
     } catch (err) {
