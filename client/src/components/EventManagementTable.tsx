@@ -73,7 +73,11 @@ export function EventManagementTable({ events, onEdit, onDelete, onViewAttendees
               <div className="text-sm">Registered: {event.registeredCount}/{event.capacity >= 1000000 ? '∞' : event.capacity}</div>
               <div className="text-sm font-medium text-green-700">
                 {!event.isFree &&
-                  `Revenue: ${new Intl.NumberFormat('en-US', { style: 'currency', currency: event.currency || 'USD' }).format((event.price || 0) * event.registeredCount)}`
+                  `Revenue: ${new Intl.NumberFormat('en-US', { style: 'currency', currency: event.currency || 'USD' }).format(
+                    event.ticketTiers && event.ticketTiers.length > 0
+                      ? event.ticketTiers.reduce((acc: number, tier) => acc + ((tier.sold || 0) * tier.price), 0)
+                      : (event.price || 0) * event.registeredCount
+                  )}`
                 }
               </div>
               <div className="flex gap-2 justify-end">
@@ -143,7 +147,7 @@ export function EventManagementTable({ events, onEdit, onDelete, onViewAttendees
                   {!event.isFree ? (
                     new Intl.NumberFormat('en-US', { style: 'currency', currency: event.currency || 'USD' }).format(
                       event.ticketTiers && event.ticketTiers.length > 0
-                        ? event.ticketTiers.reduce((acc, tier) => acc + ((tier.sold || 0) * tier.price), 0)
+                        ? event.ticketTiers.reduce((acc: number, tier) => acc + ((tier.sold || 0) * tier.price), 0)
                         : (event.price || 0) * event.registeredCount
                     )
                   ) : (

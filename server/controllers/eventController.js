@@ -164,6 +164,13 @@ const updateEvent = async (req, res) => {
       return res.status(403).json({ message: 'Not authorized to update this event' });
     }
 
+    // Prevent cancelling paid events with registrations
+    if (req.body.status === 'cancelled' && !event.isFree && event.registeredCount > 0) {
+      return res.status(400).json({
+        message: 'Cannot cancel a paid event that has registered attendees. Please contact support to process refunds.'
+      });
+    }
+
     // Parse and convert fields
     const updateData = { ...req.body };
 
@@ -258,6 +265,15 @@ const deleteEvent = async (req, res) => {
     // Check if user is the organizer
     if (event.organizer.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: 'Not authorized to delete this event' });
+    }
+
+    // Check if event has registrations
+    if (event.registeredCount > 0) {
+      const message = !event.isFree
+        ? 'Cannot delete a paid event with registered attendees.'
+        : 'Cannot delete event with registered attendees. Please cancel the event instead.';
+
+      return res.status(400).json({ message });
     }
 
     await Event.findByIdAndDelete(req.params.id);

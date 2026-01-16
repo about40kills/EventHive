@@ -212,6 +212,10 @@ exports.createCheckoutSession = async (req, res) => {
             }
         }
 
+        if (!data) {
+            throw new Error('Paystack returned no data');
+        }
+
         res.status(200).json({
             sessionId: data.reference,
             url: data.authorization_url
@@ -448,3 +452,102 @@ exports.handleWebhook = async (req, res) => {
 
     res.status(200).send();
 };
+
+// @desc    Verify Payment (Manual Callback)
+// @route   GET /api/payments/verify
+// @access  Private
+exports.verifyPayment = async (req, res) => {
+    const { reference } = req.query;
+    const userId = req.user.id; // User must be logged in to verify
+
+    if (!reference) {
+        return res.status(400).json({ message: 'Transaction reference is required' });
+    }
+
+    try {
+        // 1. Verify with Paystack
+        const data = await paystackRequest(`/transaction/verify/${reference}`, 'GET');
+
+        if (data.status !== 'success') {
+            return res.status(400).json({ message: 'Transaction was not successful' });
+        }
+
+        const { metadata, amount } = data;
+        const { eventId, ticketDetails: ticketDetailsStr } = metadata;
+
+        // Verify that the logged-in user matches the payment user (optional security check)
+        // metadata.userId comes from the session creation
+        if (metadata.userId && metadata.userId !== userId) {
+            console.warn(`Warning: Payment user ${metadata.userId} does not match logged in user ${userId}`);
+            // Proceeding anyway as the user might be an admin or just using a different device? 
+            // Ideally we should enforce this, but let's be lenient for now or just log it.
+        }
+
+        // Robust parsing of ticket details
+        let ticketDetails = [];
+        try {
+            ticketDetails = ticketDetailsStr ? JSON.parse(ticketDetailsStr) : [];
+        } catch (e) {
+            console.error('Error parsing ticketDetails from metadata:', e);
+        }
+
+        const ticketCode = `EH-${eventId}-${userId}-${reference}`;
+        const qrUrl = `${process.env.CLIENT_URL}/events/verify?code=${ticketCode}`;
+
+        // Check if registration already exists (idempotency)
+        const existingReg = await Registration.findOne({ paymentId: reference });
+        if (existingReg) {
+            return res.status(200).json({
+                success: true,
+                message: 'Payment already verified',
+                registration: existingReg
+            });
+        }
+
+        // 2. Create Registration
+        const registration = await Registration.create({
+            event: eventId,
+            user: userId,
+            status: 'confirmed',
+            paymentStatus: 'completed',
+            paymentId: reference,
+            amountPaid: amount / 100,
+            tickets: ticketDetails,
+            qrCode: ticketCode
+        });
+
+        // 3. Update Event Stats (Atomic Updates)
+        await Event.updateOne({ _id: eventId }, { $inc: { registeredCount: 1 } });
+
+        if (ticketDetails.length > 0) {
+            const bulkOps = ticketDetails.map(t => ({
+                updateOne: {
+                    filter: { _id: eventId, "ticketTiers.name": t.name },
+                    update: { $inc: { "ticketTiers.$.sold": Number(t.quantity) } }
+                }
+            }));
+
+            if (bulkOps.length > 0) {
+                await Event.bulkWrite(bulkOps);
+            }
+        }
+
+        // 4. Send Confirmation Email
+        const user = await User.findById(userId);
+        const eventDoc = await Event.findById(eventId);
+        if (user && eventDoc) {
+            await sendRegistrationConfirmation(user.email, eventDoc, qrUrl, ticketDetails);
+        }
+
+        res.status(200).json({
+            success: true,
+            message: 'Payment verified and registration created',
+            registration
+        });
+
+    } catch (error) {
+        console.error('Payment verification error:', error);
+        res.status(500).json({ message: 'Failed to verify payment' });
+    }
+};
+

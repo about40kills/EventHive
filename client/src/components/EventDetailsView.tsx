@@ -218,12 +218,12 @@ export function EventDetailsView({
             <div className="flex items-center gap-3">
               <Avatar>
                 <AvatarFallback className="bg-primary text-primary-foreground">
-                  {event.organizer.name.split(' ').map(n => n[0]).join('')}
+                  {event.organizer?.name ? event.organizer.name.split(' ').map(n => n[0]).join('') : 'O'}
                 </AvatarFallback>
               </Avatar>
               <div>
-                <p className="font-medium" data-testid="text-organizer-name">{event.organizer.name}</p>
-                <p className="text-sm text-muted-foreground">{event.organizer.email}</p>
+                <p className="font-medium" data-testid="text-organizer-name">{event.organizer?.name || 'Unknown Organizer'}</p>
+                <p className="text-sm text-muted-foreground">{event.organizer?.email || ''}</p>
               </div>
             </div>
           </div>

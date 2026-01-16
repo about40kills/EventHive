@@ -244,6 +244,10 @@ class ApiClient {
     });
   }
 
+  async verifyPayment(reference: string): Promise<{ success: boolean; message: string; registration?: any }> {
+    return this.request<{ success: boolean; message: string; registration?: any }>(`/payments/verify?reference=${reference}`);
+  }
+
   // Utility methods
   isAuthenticated(): boolean {
     return !!this.token;

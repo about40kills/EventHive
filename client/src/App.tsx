@@ -30,7 +30,7 @@ import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useToast } from "./hooks/use-toast";
 import { useEvents, useEvent, useMyEvents, useDeleteEvent } from "./hooks/useEvents";
-import { useMyRegistrations, useRegisterForEvent, useCancelRegistration } from "./hooks/useRegistrations";
+import { useMyRegistrations, useRegisterForEvent, useCancelRegistration, useVerifyPayment } from "./hooks/useRegistrations";
 import type { EventFilters as EventFiltersType } from "./types/api";
 import { EditEventForm } from "./components/EditEventForm";
 import { EventAttendeesPage } from "./components/EventAttendeesPage";
@@ -255,9 +255,36 @@ function EventDetailsPage({ params }: { params: { id: string } }) {
     const { data: registrationsData } = useMyRegistrations();
     const registerMutation = useRegisterForEvent();
     const cancelMutation = useCancelRegistration();
+    const verifyPaymentMutation = useVerifyPayment();
     const deleteMutation = useDeleteEvent();
     const { toast } = useToast();
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+
+    useEffect(() => {
+        const searchParams = new URLSearchParams(window.location.search);
+        const success = searchParams.get('success');
+        const reference = searchParams.get('reference');
+
+        if (success === 'true' && reference) {
+            verifyPaymentMutation.mutate(reference, {
+                onSuccess: () => {
+                    toast({
+                        title: "Payment Successful",
+                        description: "Your registration has been confirmed!",
+                    });
+                    // Clean URL
+                    window.history.replaceState({}, '', `/events/${params.id}`);
+                },
+                onError: (error: any) => {
+                    toast({
+                        title: "Verification Failed",
+                        description: error.message || "Could not verify payment.",
+                        variant: "destructive",
+                    });
+                }
+            });
+        }
+    }, [params.id]);
 
     if (isLoading) {
         return (
@@ -454,7 +481,7 @@ function AttendeeDashboard() {
                 stats={{
                     registeredEvents: registrations.length,
                     upcomingEvents: registrations.filter(r => new Date(r.event.date) > new Date()).length,
-                    totalEvents: registrations.length,
+                    totalEvents: registrations.filter(r => new Date(r.event.date) <= new Date()).length,
                 }}
             />
 

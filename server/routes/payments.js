@@ -6,7 +6,8 @@ const {
     handleWebhook,
     getBanks,
     resolveAccount,
-    createSubaccount
+    createSubaccount,
+    verifyPayment
 } = require('../controllers/paymentController');
 
 // Create checkout session
@@ -16,6 +17,9 @@ router.post('/create-checkout-session', protect, createCheckoutSession);
 router.get('/banks', protect, getBanks);
 router.post('/resolve-account', protect, resolveAccount);
 router.post('/create-subaccount', protect, createSubaccount);
+
+// Verify Payment (Manual)
+router.get('/verify', protect, verifyPayment);
 
 // Webhook for Stripe events (no auth middleware, Stripe validates signature)
 router.post('/webhook', express.raw({ type: 'application/json' }), handleWebhook);

@@ -66,3 +66,25 @@ export function useCancelRegistration() {
     },
   });
 }
+
+
+// Verify payment mutation
+export function useVerifyPayment() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (reference: string) => apiClient.verifyPayment(reference),
+    onSuccess: (data) => {
+      // Invalidate registrations and event details
+      queryClient.invalidateQueries({
+        queryKey: registrationKeys.myRegistrations(),
+      });
+      if (data.registration?.event) {
+        queryClient.invalidateQueries({ queryKey: eventKeys.detail(data.registration.event) });
+        queryClient.invalidateQueries({ queryKey: eventKeys.attendees(data.registration.event) });
+      }
+      queryClient.invalidateQueries({ queryKey: eventKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: eventKeys.myEvents() });
+    },
+  });
+}
