@@ -3,13 +3,15 @@ const {
   registerForEvent,
   cancelRegistration,
   getMyRegistrations,
-  getEventAttendees
+  getEventAttendees,
+  verifyTicket
 } = require('../controllers/registrationController');
 const { protect } = require('../middleware/auth');
 
 const router = express.Router();
 
 // All registration routes are protected
+router.post('/verify', protect, verifyTicket);
 router.post('/:eventId', protect, registerForEvent);
 router.delete('/:eventId', protect, cancelRegistration);
 router.get('/my-registrations', protect, getMyRegistrations);

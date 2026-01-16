@@ -202,11 +202,27 @@ class ApiClient {
     );
   }
 
+  async verifyTicket(qrCode: string): Promise<{
+    success: boolean;
+    valid: boolean;
+    registrationId: string;
+    event: string;
+    attendee: string;
+    tickets: any[];
+    checkedInCount: number;
+    paymentStatus: string;
+  }> {
+    return this.request("/registrations/verify", {
+      method: "POST",
+      body: JSON.stringify({ qrCode }),
+    });
+  }
+
   // Payment methods
-  async createCheckoutSession(eventId: string): Promise<{ sessionId: string; url: string }> {
+  async createCheckoutSession(eventId: string, tickets?: any[]): Promise<{ sessionId: string; url: string }> {
     return this.request<{ sessionId: string; url: string }>("/payments/create-checkout-session", {
       method: "POST",
-      body: JSON.stringify({ eventId }),
+      body: JSON.stringify({ eventId, tickets }),
     });
   }
 

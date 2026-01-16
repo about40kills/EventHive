@@ -31,10 +31,25 @@ const registrationSchema = new mongoose.Schema({
   registrationDate: {
     type: Date,
     default: Date.now
+  },
+  tickets: [{
+    name: { type: String, required: true },
+    quantity: { type: Number, required: true },
+    price: { type: Number, required: true }
+  }],
+  qrCode: {
+    type: String,
+    unique: true,
+    sparse: true
+  },
+  checkedInCount: {
+    type: Number,
+    default: 0
   }
 });
 
-// Compound unique index to prevent double registration
-registrationSchema.index({ user: 1, event: 1 }, { unique: true });
+// Remove unique index to allow multiple orders per user/event
+// registrationSchema.index({ user: 1, event: 1 }, { unique: true });
+registrationSchema.index({ user: 1, event: 1 });
 
 module.exports = mongoose.model('Registration', registrationSchema);

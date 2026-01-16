@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const Event = require('../models/Event');
 const Registration = require('../models/Registration');
 const User = require('../models/User');
+const { sendRegistrationConfirmation } = require('../utils/emailService');
 
 const PAYSTACK_SECRET_KEY = process.env.PAYSTACK_SECRET_KEY;
 
@@ -52,6 +53,29 @@ const paystackRequest = (endpoint, method = 'GET', body = null) => {
     });
 };
 
+// Helper to regenerate subaccount if invalid (e.g. switching environments)
+const regenerateSubaccount = async (user) => {
+    if (!user.bankDetails || !user.bankDetails.bankCode || !user.bankDetails.accountNumber) {
+        throw new Error('Cannot regenerate subaccount: Missing bank details');
+    }
+
+    const payload = {
+        business_name: user.bankDetails.accountName || user.name,
+        settlement_bank: user.bankDetails.bankCode,
+        account_number: user.bankDetails.accountNumber,
+        percentage_charge: 5,
+        description: `Subaccount for ${user.name} on EventHive`
+    };
+
+    const data = await paystackRequest('/subaccount', 'POST', payload);
+
+    // Update user in DB
+    user.paystackSubaccountCode = data.subaccount_code;
+    await user.save();
+
+    return data.subaccount_code;
+};
+
 // ... (createCheckoutSession, getBanks, resolveAccount, createSubaccount remain largely same, just checking secretKey inside) ...
 
 // I will target the Webhook handler specifically for the big fix, and the helper.
@@ -64,7 +88,7 @@ const paystackRequest = (endpoint, method = 'GET', body = null) => {
 // @access  Private
 exports.createCheckoutSession = async (req, res) => {
     try {
-        const { eventId } = req.body;
+        const { eventId, tickets } = req.body;
         const userId = req.user.id;
         const email = req.user.email;
 
@@ -78,18 +102,39 @@ exports.createCheckoutSession = async (req, res) => {
             return res.status(400).json({ message: 'This event is free' });
         }
 
+        // Calculate Amount and Ticket Details
+        let amount = 0;
+        let ticketDetails = [];
+
+        if (tickets && Array.isArray(tickets) && tickets.length > 0) {
+            tickets.forEach(ticket => {
+                amount += ticket.price * ticket.quantity;
+            });
+            ticketDetails = tickets;
+        } else {
+            // Fallback for simple single ticket purchase
+            amount = event.price;
+            ticketDetails = [{ name: 'General Admission', quantity: 1, price: event.price }];
+        }
+
         // Handle missing Paystack key (Mock Mode)
         if (!process.env.PAYSTACK_SECRET_KEY) {
             console.log('⚠️ Paystack key missing. Mocking payment success.');
 
-            // Simulate the logic locally since we won't get a webhook
-            let registration = await Registration.findOne({ event: eventId, user: userId });
             const mockRef = 'mock_ref_' + Date.now();
+            const ticketCode = `EH-${eventId}-${userId}-${mockRef}`;
+            const qrUrl = `${process.env.CLIENT_URL}/events/verify?code=${ticketCode}`;
+
+            // Create/Update Registration
+            let registration = await Registration.findOne({ event: eventId, user: userId });
 
             if (registration) {
+                // If existing, update.
                 registration.paymentStatus = 'completed';
                 registration.paymentId = mockRef;
-                registration.amountPaid = event.price;
+                registration.amountPaid = amount;
+                registration.tickets = ticketDetails;
+                registration.qrCode = ticketCode; // Save simple code
                 await registration.save();
             } else {
                 await Registration.create({
@@ -98,8 +143,19 @@ exports.createCheckoutSession = async (req, res) => {
                     status: 'confirmed',
                     paymentStatus: 'completed',
                     paymentId: mockRef,
-                    amountPaid: event.price
+                    amountPaid: amount,
+                    tickets: ticketDetails,
+                    qrCode: ticketCode // Save simple code
                 });
+            }
+
+            // Send Email with QR
+            // Need user details
+            const user = await User.findById(userId);
+            if (user) {
+                // We need to fetch event correctly if not populated enough (it is)
+                // Pass qrUrl which is the full link for the image generator
+                await sendRegistrationConfirmation(user.email, event, qrUrl, ticketDetails);
             }
 
             // Return a mock session and success URL
@@ -112,12 +168,13 @@ exports.createCheckoutSession = async (req, res) => {
         // Initialize Paystack Transaction
         const payload = {
             email: email,
-            amount: Math.round(event.price * 100),
+            amount: Math.round(amount * 100),
             currency: event.currency ? event.currency.toUpperCase() : 'NGN',
             callback_url: `${process.env.CLIENT_URL}/events/${eventId}?success=true`,
             metadata: {
                 eventId: eventId,
                 userId: userId,
+                ticketDetails: JSON.stringify(ticketDetails),
                 custom_fields: [
                     {
                         display_name: "Event",
@@ -134,7 +191,26 @@ exports.createCheckoutSession = async (req, res) => {
             // The percentage_charge was set during subaccount creation (5%)
         }
 
-        const data = await paystackRequest('/transaction/initialize', 'POST', payload);
+        let data;
+        try {
+            data = await paystackRequest('/transaction/initialize', 'POST', payload);
+        } catch (error) {
+            // Check for Invalid Subaccount error (common when switching envs) and retry
+            if (error.message && error.message.includes('Invalid Subaccount') && event.organizer) {
+                console.log('⚠️ Invalid subaccount detected. Attempting to regenerate...');
+                try {
+                    const newSubaccount = await regenerateSubaccount(event.organizer);
+                    payload.subaccount = newSubaccount;
+                    data = await paystackRequest('/transaction/initialize', 'POST', payload);
+                    console.log('✅ Subaccount regenerated and payment initialized successfully.');
+                } catch (retryError) {
+                    console.error('❌ Failed to regenerate subaccount:', retryError);
+                    throw error; // Throw original error
+                }
+            } else {
+                throw error;
+            }
+        }
 
         res.status(200).json({
             sessionId: data.reference,
@@ -287,27 +363,40 @@ exports.handleWebhook = async (req, res) => {
         // Handle the event
         if (event.event === 'charge.success') {
             const { metadata, reference, amount } = event.data;
-            const { eventId, userId } = metadata;
+            const { eventId, userId, ticketDetails: ticketDetailsStr } = metadata;
 
-            // Find existing or create new registration
-            let registration = await Registration.findOne({ event: eventId, user: userId });
+            const ticketDetails = ticketDetailsStr ? JSON.parse(ticketDetailsStr) : [];
+            const ticketCode = `EH-${eventId}-${userId}-${reference}`;
+            const qrUrl = `${process.env.CLIENT_URL}/events/verify?code=${ticketCode}`;
 
-            if (registration) {
-                registration.paymentStatus = 'completed';
-                registration.paymentId = reference;
-                registration.amountPaid = amount / 100;
-                await registration.save();
-            } else {
-                await Registration.create({
-                    event: eventId,
-                    user: userId,
-                    status: 'confirmed',
-                    paymentStatus: 'completed',
-                    paymentId: reference,
-                    amountPaid: amount / 100
-                });
-            }
+            // Create new registration for every successful payment to allow multiple purchases
+            // (Previously we checked for existing, but now with multi-tickets/orders, new is better?)
+            // But to avoid spam, we'll check if a PaymentID matches.
+            // Actually, Paystack reference is unique per transaction.
+
+            await Registration.create({
+                event: eventId,
+                user: userId,
+                status: 'confirmed',
+                paymentStatus: 'completed',
+                paymentId: reference,
+                amountPaid: amount / 100,
+                tickets: ticketDetails,
+                qrCode: ticketCode // Save simple code
+            });
+
             console.log(`Payment successful for Event ${eventId} by User ${userId}`);
+
+            // Send Confirmation Email
+            try {
+                const user = await User.findById(userId);
+                const eventDoc = await Event.findById(eventId);
+                if (user && eventDoc) {
+                    await sendRegistrationConfirmation(user.email, eventDoc, qrUrl, ticketDetails);
+                }
+            } catch (emailErr) {
+                console.error('Error sending confirmation email:', emailErr);
+            }
         }
     } catch (err) {
         console.error('Error processing webhook:', err);

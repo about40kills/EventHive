@@ -6,7 +6,7 @@ const { sendRegistrationConfirmation } = require('../utils/emailService');
 //routes POST /api/registrations
 const registerForEvent = async (req, res) => {
   try {
-    const { eventId } = req.params; 
+    const { eventId } = req.params;
     const { accessCode } = req.body;
 
     // Check if event exists and is published
@@ -21,8 +21,8 @@ const registerForEvent = async (req, res) => {
 
     // Check if user already registered
     const existingRegistration = await Registration.findOne({
-      user: req.user._id, 
-      event: eventId 
+      user: req.user._id,
+      event: eventId
     });
 
     if (existingRegistration) {
@@ -36,25 +36,25 @@ const registerForEvent = async (req, res) => {
       }
 
       // Check email domain if allowed domains are specified
-      if (event.accessControl.allowedDomains.length > 0) { 
+      if (event.accessControl.allowedDomains.length > 0) {
         const userDomain = req.user.email.split('@')[1];
-        if (!event.accessControl.allowedDomains.includes(userDomain)) { 
-          return res.status(403).json({ message: 'Email domain not allowed for this event' }); 
+        if (!event.accessControl.allowedDomains.includes(userDomain)) {
+          return res.status(403).json({ message: 'Email domain not allowed for this event' });
         }
       }
     }
 
     // Check capacity
     let registrationStatus = 'confirmed';
-    if (event.registeredCount >= event.capacity) { 
-      registrationStatus = 'waitlist'; 
+    if (event.registeredCount >= event.capacity) {
+      registrationStatus = 'waitlist';
     }
 
     // Create registration
     const registration = await Registration.create({
-      user: req.user._id, 
-      event: eventId,  
-      status: registrationStatus 
+      user: req.user._id,
+      event: eventId,
+      status: registrationStatus
     });
 
     // Increment registered count only if confirmed
@@ -73,8 +73,8 @@ const registerForEvent = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: registrationStatus === 'confirmed' 
-        ? 'Successfully registered for event' 
+      message: registrationStatus === 'confirmed'
+        ? 'Successfully registered for event'
         : 'Added to waitlist',
       registration
     });
@@ -159,12 +159,12 @@ const getEventAttendees = async (req, res) => {
 
     const registrations = await Registration.find({
       event: eventId,
-      status: 'confirmed' 
-    }).populate('user', 'name email'); 
+      status: 'confirmed'
+    }).populate('user', 'name email');
 
-    const attendees = registrations.map(reg => ({ 
+    const attendees = registrations.map(reg => ({
       name: reg.user.name,
-      email: reg.user.email, 
+      email: reg.user.email,
       registrationDate: reg.registrationDate
     }));
 
@@ -178,9 +178,45 @@ const getEventAttendees = async (req, res) => {
   }
 };
 
+// Verify Ticket (Scan)
+// POST /api/registrations/verify
+const verifyTicket = async (req, res) => {
+  try {
+    const { qrCode } = req.body;
+
+    // Find registration by QR Code
+    const registration = await Registration.findOne({ qrCode }).populate('event').populate('user', 'name email');
+
+    if (!registration) {
+      return res.status(404).json({ success: false, message: 'Invalid Ticket' });
+    }
+
+    // Check if event belongs to the requester (Organizer)
+    if (registration.event.organizer.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ success: false, message: 'Not authorized to verify this ticket' });
+    }
+
+    res.json({
+      success: true,
+      valid: true,
+      registrationId: registration._id,
+      event: registration.event.title,
+      eventImage: registration.event.image,
+      attendee: registration.user.name,
+      tickets: registration.tickets,
+      checkedInCount: registration.checkedInCount,
+      paymentStatus: registration.paymentStatus
+    });
+
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   registerForEvent,
   cancelRegistration,
   getMyRegistrations,
-  getEventAttendees
+  getEventAttendees,
+  verifyTicket
 };

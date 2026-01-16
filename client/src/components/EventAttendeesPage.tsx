@@ -165,8 +165,8 @@ export function EventAttendeesPage(props: EventAttendeesPageProps) {
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 text-sm">
                         <Mail className="h-3 w-3" />
-                        <a 
-                          href={`mailto:${attendee.email}`} 
+                        <a
+                          href={`mailto:${attendee.email}`}
                           className="text-blue-600 hover:underline"
                         >
                           {attendee.email}
@@ -175,8 +175,8 @@ export function EventAttendeesPage(props: EventAttendeesPageProps) {
                       {attendee.phone && (
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                           <Phone className="h-3 w-3" />
-                          <a 
-                            href={`tel:${attendee.phone}`} 
+                          <a
+                            href={`tel:${attendee.phone}`}
                             className="hover:underline"
                           >
                             {attendee.phone}

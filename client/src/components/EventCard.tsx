@@ -145,17 +145,24 @@ export function EventCard({
           <div className="flex items-center justify-between text-sm">
             <div className="flex items-center gap-2">
               <Users className="h-4 w-4 text-muted-foreground" />
-              <span data-testid={`text-registered-${id}`}>{registeredCount}/{capacity}</span>
+              <span data-testid={`text-registered-${id}`}>{registeredCount}/{capacity >= 1000000 ? '∞' : capacity}</span>
             </div>
-            <span className={`text-xs ${spotsLeft < 10 ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
-              {spotsLeft} spots left
-            </span>
+            {capacity < 1000000 && (
+              <span className={`text-xs ${spotsLeft < 10 ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
+                {spotsLeft} spots left
+              </span>
+            )}
+            {capacity >= 1000000 && (
+              <span className="text-xs text-green-600 font-medium">
+                Unlimited spots
+              </span>
+            )}
           </div>
           <div className="w-full bg-muted rounded-full h-2">
             <div
               className={`h-2 rounded-full transition-all ${percentFull >= 90 ? 'bg-destructive' : percentFull >= 70 ? 'bg-chart-4' : 'bg-primary'
                 }`}
-              style={{ width: `${percentFull}%` }}
+              style={{ width: `${Math.min(percentFull, 100)}%` }}
             />
           </div>
         </div>

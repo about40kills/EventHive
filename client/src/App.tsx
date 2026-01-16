@@ -3,7 +3,7 @@ import { ArrowRight } from "lucide-react";
 import { apiClient } from "@/lib/api";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { Toaster } from "@/components/ui/toaster";
+import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { Header } from "./components/Header";
@@ -35,6 +35,7 @@ import type { EventFilters as EventFiltersType } from "./types/api";
 import { EditEventForm } from "./components/EditEventForm";
 import { EventAttendeesPage } from "./components/EventAttendeesPage";
 import { PayoutSettings } from "./components/PayoutSettings";
+import { TicketVerifier } from "./components/TicketVerifier";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs";
 
 // Import event images
@@ -287,7 +288,7 @@ function EventDetailsPage({ params }: { params: { id: string } }) {
         reg => reg.event._id === event._id
     ) || false;
 
-    const handleRegister = async () => {
+    const handleRegister = async (selectedTickets?: any[]) => {
         if (!user) {
             setLocation('/login');
             return;
@@ -312,7 +313,7 @@ function EventDetailsPage({ params }: { params: { id: string } }) {
                 });
             } else {
                 // Handle payment for paid events
-                const { url } = await apiClient.createCheckoutSession(event._id);
+                const { url } = await apiClient.createCheckoutSession(event._id, selectedTickets);
                 if (url) {
                     window.location.href = url;
                 } else {
@@ -413,6 +414,7 @@ function EventDetailsPage({ params }: { params: { id: string } }) {
                     isFree: event.isFree,
                     price: event.price,
                     currency: event.currency,
+                    ticketTiers: event.ticketTiers,
                 }}
                 isRegistered={isRegistered}
                 canRegister={eventAction === 'register'}
@@ -515,6 +517,7 @@ function OrganizerDashboard() {
         capacity: e.capacity,
         price: e.price,
         currency: e.currency,
+        isFree: e.isFree,
     }));
 
     const handleEdit = (eventId: string) => {
@@ -548,6 +551,10 @@ function OrganizerDashboard() {
 
     const handleViewAttendees = (eventId: string) => {
         setLocation(`/events/${eventId}/attendees`);
+    };
+
+    const handleVerify = (eventId: string) => {
+        setLocation(`/events/verify`);
     };
 
     const selectedEvent = events.find(e => e._id === deleteEventId);
@@ -595,6 +602,7 @@ function OrganizerDashboard() {
                                 onEdit={handleEdit}
                                 onDelete={handleDelete}
                                 onViewAttendees={handleViewAttendees}
+                                onVerify={handleVerify}
                             />
                         )}
                     </div>
@@ -658,6 +666,7 @@ function Router() {
                         )}
                     />
                     <Route path="/events/:id/attendees" component={EventAttendeesPage} />
+                    <Route path="/events/verify" component={TicketVerifier} />
                     <Route path="/events/:id" component={EventDetailsPage} />
                     <Route path="/about" component={About} />
                     <Route path="/legal/privacy" component={PrivacyPolicy} />

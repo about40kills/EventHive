@@ -44,6 +44,13 @@ export interface Event {
   isFree: boolean;
   price: number;
   currency: string;
+  ticketTiers?: Array<{
+    name: string;
+    price: number;
+    quantity: number;
+    sold?: number;
+    description?: string;
+  }>;
   createdAt: string;
 }
 
@@ -122,6 +129,12 @@ export interface CreateEventForm {
   isFree: boolean;
   price: number;
   currency: string;
+  ticketTiers?: Array<{
+    name: string;
+    price: number;
+    quantity: number;
+    description?: string;
+  }>;
   image?: string;
   tags: string[];
   status: "draft" | "published";

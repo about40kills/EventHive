@@ -40,6 +40,12 @@ export interface EventFormData {
   isFree?: boolean;
   price?: number;
   currency?: string;
+  ticketTiers?: Array<{
+    name: string;
+    price?: number;
+    quantity: number;
+    description?: string;
+  }>;
 }
 
 const categories = [
@@ -100,6 +106,7 @@ export function CreateEventForm({ onSubmit, initialData, isLoading }: CreateEven
     isFree: initialData?.isFree ?? true,
     price: initialData?.price || undefined,
     currency: initialData?.currency || 'GHS',
+    ticketTiers: initialData?.ticketTiers || [],
   });
 
   const [isUnlimitedCapacity, setIsUnlimitedCapacity] = useState(false);
@@ -235,7 +242,32 @@ export function CreateEventForm({ onSubmit, initialData, isLoading }: CreateEven
       submitData.append('status', 'published');
       submitData.append('isFree', (formData.isFree ?? true).toString());
       if (!(formData.isFree ?? true)) {
-        submitData.append('price', (formData.price || 0).toString());
+        if (formData.ticketTiers && formData.ticketTiers.length > 0) {
+          // Validate tiers
+          const isValidTiers = formData.ticketTiers.every(t => t.name && t.quantity > 0 && t.price !== undefined && t.price >= 0);
+          if (!isValidTiers) {
+            toast({
+              title: "Validation Error",
+              description: "Please fill in all ticket tier details correctly (Price and Quantity).",
+              variant: "destructive",
+            });
+            setIsSubmitting(false);
+            return;
+          }
+
+          // Validate total ticket quantity vs capacity
+          const totalTicketQuantity = formData.ticketTiers.reduce((sum, tier) => sum + tier.quantity, 0);
+          if (totalTicketQuantity > formData.capacity) {
+            setIsSubmitting(false);
+            return;
+          }
+
+          submitData.append('ticketTiers', JSON.stringify(formData.ticketTiers));
+          // Also set price to first tier or average for sorting/display
+          submitData.append('price', (formData.ticketTiers[0].price || 0).toString());
+        } else {
+          submitData.append('price', (formData.price || 0).toString());
+        }
         submitData.append('currency', formData.currency || 'USD');
       }
 
@@ -459,6 +491,7 @@ export function CreateEventForm({ onSubmit, initialData, isLoading }: CreateEven
                     value={formData.date}
                     onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                     required
+                    className="w-full"
                     data-testid="input-date"
                   />
                 </div>
@@ -471,6 +504,7 @@ export function CreateEventForm({ onSubmit, initialData, isLoading }: CreateEven
                     value={formData.time}
                     onChange={(e) => setFormData({ ...formData, time: e.target.value })}
                     required
+                    className="w-full"
                     data-testid="input-time"
                   />
                 </div>
@@ -502,6 +536,7 @@ export function CreateEventForm({ onSubmit, initialData, isLoading }: CreateEven
                       required={!isUnlimitedCapacity}
                       placeholder="Enter capacity"
                       data-testid="input-capacity"
+                      className={(formData.ticketTiers || []).reduce((sum, tier) => sum + tier.quantity, 0) > formData.capacity ? "border-destructive" : ""}
                     />
                     <div className="flex items-center space-x-2">
                       <Checkbox
@@ -523,6 +558,11 @@ export function CreateEventForm({ onSubmit, initialData, isLoading }: CreateEven
                         Unlimited capacity
                       </label>
                     </div>
+                    {!(formData.isFree ?? true) && (formData.ticketTiers || []).reduce((sum, tier) => sum + tier.quantity, 0) > formData.capacity && (
+                      <p className="text-sm text-destructive font-medium">
+                        Total ticket quantity ({(formData.ticketTiers || []).reduce((sum, tier) => sum + tier.quantity, 0)}) exceeds event capacity ({formData.capacity === 1000000 ? 'Unlimited' : formData.capacity}).
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -544,21 +584,109 @@ export function CreateEventForm({ onSubmit, initialData, isLoading }: CreateEven
 
                 {!(formData.isFree ?? true) && (
                   <div className="space-y-4 p-4 border rounded-lg bg-muted/30">
-                    <div className="flex flex-col md:flex-row gap-4">
-                      <div className="flex-1 space-y-2">
-                        <Label htmlFor="price">Price *</Label>
-                        <Input
-                          id="price"
-                          type="number"
-                          min="0.01"
-                          step="0.01"
-                          placeholder="0.00"
-                          value={formData.price || ''}
-                          onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) })}
-                          required
-                          data-testid="input-price"
-                        />
+                    <div className="flex flex-col gap-4">
+                      <div className="flex justify-between items-center">
+                        <Label>Ticket Categories</Label>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const newTiers = [...(formData.ticketTiers || [])];
+                            newTiers.push({ name: '', price: undefined, quantity: 10, description: '' });
+                            setFormData({ ...formData, ticketTiers: newTiers });
+                          }}
+                        >
+                          + Add Category
+                        </Button>
                       </div>
+
+                      {formData.ticketTiers && formData.ticketTiers.length > 0 ? (
+                        <div className="space-y-3">
+                          {formData.ticketTiers.map((tier, index) => (
+                            <div key={index} className="flex gap-2 items-start p-3 border rounded bg-background">
+                              <div className="grid grid-cols-12 gap-2 flex-1">
+                                <div className="col-span-4">
+                                  <Label className="text-xs">Name</Label>
+                                  <Input
+                                    placeholder="e.g. VIP"
+                                    value={tier.name}
+                                    onChange={(e) => {
+                                      const newTiers = [...(formData.ticketTiers || [])];
+                                      newTiers[index].name = e.target.value;
+                                      setFormData({ ...formData, ticketTiers: newTiers });
+                                    }}
+                                    required
+                                  />
+                                </div>
+                                <div className="col-span-3">
+                                  <Label className="text-xs">Price</Label>
+                                  <Input
+                                    type="number"
+                                    placeholder="0.00"
+                                    value={tier.price ?? ''}
+                                    onChange={(e) => {
+                                      const newTiers = [...(formData.ticketTiers || [])];
+                                      newTiers[index].price = e.target.value === '' ? undefined : parseFloat(e.target.value);
+                                      setFormData({ ...formData, ticketTiers: newTiers });
+                                    }}
+                                    required
+                                  />
+                                </div>
+                                <div className="col-span-3">
+                                  <Label className="text-xs">Quantity</Label>
+                                  <Input
+                                    type="number"
+                                    placeholder="Qty"
+                                    value={tier.quantity}
+                                    onChange={(e) => {
+                                      const newTiers = [...(formData.ticketTiers || [])];
+                                      newTiers[index].quantity = parseInt(e.target.value);
+                                      setFormData({ ...formData, ticketTiers: newTiers });
+                                    }}
+                                  />
+                                </div>
+                                <div className="col-span-2 flex items-end">
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="text-destructive"
+                                    onClick={() => {
+                                      const newTiers = [...(formData.ticketTiers || [])];
+                                      newTiers.splice(index, 1);
+                                      setFormData({ ...formData, ticketTiers: newTiers });
+                                    }}
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          <p className="text-sm text-muted-foreground">Standard Pricing (Single Category)</p>
+                          <div className="flex flex-col md:flex-row gap-4">
+                            <div className="flex-1 space-y-2">
+                              <Label htmlFor="price">Price *</Label>
+                              <Input
+                                id="price"
+                                type="number"
+                                min="0.01"
+                                step="0.01"
+                                placeholder="0.00"
+                                value={formData.price || ''}
+                                onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) })}
+                                required={!formData.ticketTiers?.length}
+                                data-testid="input-price"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
                       <div className="w-full md:w-1/3 space-y-2">
                         <Label htmlFor="currency">Currency</Label>
                         <Select
@@ -579,7 +707,7 @@ export function CreateEventForm({ onSubmit, initialData, isLoading }: CreateEven
                       </div>
                     </div>
 
-                    {formData.price && formData.price > 0 && (
+                    {(formData.price && formData.price > 0 && (!formData.ticketTiers || formData.ticketTiers.length === 0)) && (
                       <div className="text-sm space-y-1 pt-2 border-t border-dashed border-muted-foreground/50">
                         <div className="flex justify-between text-muted-foreground">
                           <span>Platform Fee (5%)</span>

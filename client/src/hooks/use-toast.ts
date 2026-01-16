@@ -1,54 +1,58 @@
-import { useState, ReactNode } from "react";
+import { toast as sonnerToast } from "sonner";
+import { ReactNode } from "react";
 
 export interface Toast {
   id: string;
   title?: string;
   description?: string;
   action?: ReactNode;
-  variant?: "default" | "destructive";
+  variant?: "default" | "destructive" | "success";
 }
 
-const toasts: Toast[] = [];
-let toastId = 0;
-
 export function useToast() {
-  const [, forceUpdate] = useState({});
-
   const toast = ({
     title,
     description,
     action,
     variant = "default",
   }: Omit<Toast, "id">) => {
-    const id = (++toastId).toString();
-    const newToast: Toast = { id, title, description, action, variant };
 
-    toasts.push(newToast);
-    forceUpdate({});
+    // Auto-map variant to sonner types
+    switch (variant) {
+      case "destructive":
+        return sonnerToast.error(title, {
+          description,
+          action: action as any, // Simple pass through, though might not look perfect without complex adapting
+        });
+      case "success":
+        return sonnerToast.success(title, {
+          description,
+          action: action as any,
+        });
+      default:
+        // Default usually implies success in this app context (or neutral)
+        // But for standard "Operation Successful", we want green tick.
+        // If title or description contains "Success" or "verified", we force success
+        const isSuccess = (title?.toLowerCase().includes("success") || title?.toLowerCase().includes("verified") || description?.toLowerCase().includes("success"));
 
-    // Auto remove after 5 seconds
-    setTimeout(() => {
-      const index = toasts.findIndex((t) => t.id === id);
-      if (index > -1) {
-        toasts.splice(index, 1);
-        forceUpdate({});
-      }
-    }, 5000);
+        if (isSuccess) {
+          return sonnerToast.success(title, { description, action: action as any });
+        }
 
-    return id;
+        return sonnerToast.message(title, {
+          description,
+          action: action as any,
+        });
+    }
   };
 
-  const dismiss = (toastId: string) => {
-    const index = toasts.findIndex((t) => t.id === toastId);
-    if (index > -1) {
-      toasts.splice(index, 1);
-      forceUpdate({});
-    }
+  const dismiss = (toastId?: string) => {
+    sonnerToast.dismiss(toastId);
   };
 
   return {
     toast,
     dismiss,
-    toasts: [...toasts],
+    toasts: [] // Mock to satisfy any legacy usage, though likely unused
   };
 }

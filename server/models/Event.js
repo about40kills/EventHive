@@ -78,6 +78,13 @@ const eventSchema = new mongoose.Schema({
     default: 'GHS',
     enum: ['USD', 'EUR', 'GBP', 'NGN', 'GHS', 'ZAR', 'KES']
   },
+  ticketTiers: [{
+    name: { type: String, required: true },
+    price: { type: Number, required: true },
+    quantity: { type: Number, required: true },
+    sold: { type: Number, default: 0 },
+    description: String
+  }],
   image: {
     type: String
   },

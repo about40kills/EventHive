@@ -35,6 +35,38 @@ const createEvent = async (req, res) => {
       eventData.image = req.file.path;
     }
 
+    // Parse fields if they are strings (Multipart/FormData)
+    if (typeof eventData.ticketTiers === 'string') {
+      try {
+        eventData.ticketTiers = JSON.parse(eventData.ticketTiers);
+      } catch (e) {
+        eventData.ticketTiers = [];
+      }
+    }
+    if (typeof eventData.tags === 'string') {
+      try {
+        eventData.tags = JSON.parse(eventData.tags);
+      } catch (e) {
+        eventData.tags = [];
+      }
+    }
+    if (typeof eventData.accessControl === 'string') {
+      try {
+        eventData.accessControl = JSON.parse(eventData.accessControl);
+      } catch (e) {
+        eventData.accessControl = {};
+      }
+    }
+
+    // Validate ticket tiers capacity
+    if (eventData.ticketTiers && Array.isArray(eventData.ticketTiers) && eventData.ticketTiers.length > 0) {
+      const totalTickets = eventData.ticketTiers.reduce((sum, tier) => sum + Number(tier.quantity), 0);
+      const capacity = Number(eventData.capacity);
+
+      if (totalTickets > capacity) {
+        return res.status(400).json({ message: `Total ticket quantity (${totalTickets}) cannot exceed event capacity (${capacity})` });
+      }
+    }
 
     const event = await Event.create(eventData);
     await event.populate('organizer', 'name email');
@@ -159,6 +191,25 @@ const updateEvent = async (req, res) => {
       }
     }
 
+    if (typeof updateData.ticketTiers === 'string') {
+      try {
+        updateData.ticketTiers = JSON.parse(updateData.ticketTiers);
+      } catch {
+        updateData.ticketTiers = [];
+      }
+    }
+
+    // Ensure price in ticket tiers is a number
+    if (updateData.ticketTiers && Array.isArray(updateData.ticketTiers)) {
+      updateData.ticketTiers = updateData.ticketTiers.map(tier => ({
+        ...tier,
+        price: (tier.price === undefined || tier.price === '') ? 0 : Number(tier.price)
+      }));
+    } else if (updateData.ticketTiers) {
+      // If it was sent but failed parsing or wasn't an array, reset it
+      updateData.ticketTiers = [];
+    }
+
     // Handle image removal 
     if (req.body.removeImage === 'true') {
       updateData.image = null;
@@ -175,6 +226,14 @@ const updateEvent = async (req, res) => {
     Object.keys(updateData).forEach(key => {
       event[key] = updateData[key];
     });
+
+    // Validate ticket tiers capacity
+    if (event.ticketTiers && event.ticketTiers.length > 0) {
+      const totalTickets = event.ticketTiers.reduce((sum, tier) => sum + Number(tier.quantity), 0);
+      if (totalTickets > event.capacity) {
+        return res.status(400).json({ message: `Total ticket quantity (${totalTickets}) cannot exceed event capacity (${event.capacity})` });
+      }
+    }
 
     await event.save();
     await event.populate('organizer', 'name email');

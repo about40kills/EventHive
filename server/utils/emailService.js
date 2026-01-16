@@ -1,4 +1,5 @@
 const { Resend } = require("resend");
+const QRCode = require('qrcode');
 require("dotenv").config();
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -111,13 +112,27 @@ const generateGoogleCalendarLink = (event) => {
 };
 
 // Send registration confirmation email
-const sendRegistrationConfirmation = async (userEmail, eventDetails) => {
+const sendRegistrationConfirmation = async (userEmail, eventDetails, qrCodeData, ticketDetails) => {
   try {
     const icsContent = generateICSContent(eventDetails);
     const googleCalendarLink = generateGoogleCalendarLink(eventDetails);
 
     // Convert string content to Buffer for attachment to avoid encoding issues
     const icsBuffer = Buffer.from(icsContent, 'utf-8');
+
+    // Generate QR Code if data is provided
+    let qrCodeImage = null;
+    if (qrCodeData) {
+      qrCodeImage = await QRCode.toDataURL(qrCodeData);
+    }
+
+    // Ensure image URL is absolute
+    let eventImage = eventDetails.image;
+    if (eventImage && !eventImage.startsWith('http')) {
+      // Use SERVER_URL or fallback
+      const baseUrl = process.env.SERVER_URL || 'http://localhost:3001';
+      eventImage = `${baseUrl}${eventImage.startsWith('/') ? '' : '/'}${eventImage}`;
+    }
 
     const result = await resend.emails.send({
       from: "EventHive <noreply@eventhive.xyz>",
@@ -131,13 +146,27 @@ const sendRegistrationConfirmation = async (userEmail, eventDetails) => {
       ],
       html: `
         <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff;">
-          ${getEmailHeader(eventDetails.image)}
+          ${getEmailHeader(eventImage)}
           
           <div style="padding: 0 30px;">
             <h2 style="color: #333; font-size: 28px; margin-bottom: 10px;">Registration Confirmed! 🎉</h2>
             <p style="font-size: 16px; color: #666; line-height: 1.6;">Thank you for registering for <strong>${eventDetails.title
         }</strong></p>
             
+            ${qrCodeImage ? `
+            <div style="text-align: center; margin: 30px 0; padding: 20px; background: #f8f9fa; border-radius: 12px; border: 2px dashed #cbd5e0;">
+              <p style="margin: 0 0 15px 0; font-weight: bold; color: #4a5568;">Your Entry Ticket</p>
+              <img src="${qrCodeImage}" alt="Ticket QR Code" style="width: 200px; height: 200px;" />
+              <p style="margin: 10px 0 0 0; font-size: 12px; color: #718096;">Scan this code at the event entrance</p>
+              ${ticketDetails ? `<div style="margin-top: 15px; text-align: left; font-size: 14px; color: #4a5568;">
+                <strong>Tickets:</strong>
+                <ul style="margin: 5px 0; padding-left: 20px;">
+                  ${ticketDetails.map(t => `<li>${t.quantity}x ${t.name}</li>`).join('')}
+                </ul>
+              </div>` : ''}
+            </div>
+            ` : ''}
+
             <div style="background-color: #f8f9ff; padding: 25px; border-radius: 12px; margin: 25px 0; border-left: 4px solid #667eea;">
               <h3 style="margin-top: 0; color: #333; font-size: 20px;">Event Details:</h3>
               <div style="line-height: 1.8;">

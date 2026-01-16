@@ -8,7 +8,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Edit, Trash2, Users, MoreVertical } from "lucide-react";
+import { Edit, Trash2, Users, MoreVertical, QrCode } from "lucide-react";
 import { format } from "date-fns";
 import {
   DropdownMenu,
@@ -16,6 +16,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface Event {
   id: string;
@@ -26,6 +27,7 @@ interface Event {
   capacity: number;
   price?: number;
   currency?: string;
+  isFree: boolean;
 }
 
 interface EventManagementTableProps {
@@ -33,6 +35,7 @@ interface EventManagementTableProps {
   onEdit?: (id: string) => void;
   onDelete?: (id: string) => void;
   onViewAttendees?: (id: string) => void;
+  onVerify?: (id: string) => void;
 }
 
 const statusColors = {
@@ -42,7 +45,7 @@ const statusColors = {
   completed: 'bg-primary/10 text-primary',
 };
 
-export function EventManagementTable({ events, onEdit, onDelete, onViewAttendees }: EventManagementTableProps) {
+export function EventManagementTable({ events, onEdit, onDelete, onViewAttendees, onVerify }: EventManagementTableProps) {
   // Use a media query to detect mobile
   const isMobile = typeof window !== "undefined" && window.innerWidth < 640;
 
@@ -60,11 +63,18 @@ export function EventManagementTable({ events, onEdit, onDelete, onViewAttendees
               <div>
                 <Badge className={statusColors[event.status]}>{event.status}</Badge>
               </div>
-              <div className="text-sm">Registered: {event.registeredCount}/{event.capacity}</div>
+              <div className="text-sm">Registered: {event.registeredCount}/{event.capacity >= 1000000 ? '∞' : event.capacity}</div>
               <div className="text-sm font-medium text-green-700">
-                Revenue: {new Intl.NumberFormat('en-US', { style: 'currency', currency: event.currency || 'USD' }).format((event.price || 0) * event.registeredCount)}
+                {!event.isFree &&
+                  `Revenue: ${new Intl.NumberFormat('en-US', { style: 'currency', currency: event.currency || 'USD' }).format((event.price || 0) * event.registeredCount)}`
+                }
               </div>
               <div className="flex gap-2 justify-end">
+                {!event.isFree && (
+                  <Button variant="ghost" size="icon" onClick={() => onVerify?.(event.id)} title="Verify Tickets">
+                    <QrCode className="h-4 w-4" />
+                  </Button>
+                )}
                 <Button variant="ghost" size="icon" onClick={() => onEdit?.(event.id)}>
                   <Edit className="h-4 w-4" />
                 </Button>
@@ -109,7 +119,7 @@ export function EventManagementTable({ events, onEdit, onDelete, onViewAttendees
         <TableBody>
           {events.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+              <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
                 No events found
               </TableCell>
             </TableRow>
@@ -121,18 +131,50 @@ export function EventManagementTable({ events, onEdit, onDelete, onViewAttendees
                 <TableCell>
                   <Badge className={statusColors[event.status]}>{event.status}</Badge>
                 </TableCell>
-                <TableCell>{event.registeredCount}/{event.capacity}</TableCell>
+                <TableCell>{event.registeredCount}/{event.capacity >= 1000000 ? '∞' : event.capacity}</TableCell>
                 <TableCell className="font-medium text-green-700">
-                  {new Intl.NumberFormat('en-US', { style: 'currency', currency: event.currency || 'USD' }).format((event.price || 0) * event.registeredCount)}
+                  {!event.isFree ? (
+                    new Intl.NumberFormat('en-US', { style: 'currency', currency: event.currency || 'USD' }).format((event.price || 0) * event.registeredCount)
+                  ) : (
+                    <span className="text-muted-foreground">-</span>
+                  )}
                 </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
-                    <Button variant="ghost" size="icon" onClick={() => onEdit?.(event.id)}>
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => onViewAttendees?.(event.id)}>
-                      <Users className="h-4 w-4" />
-                    </Button>
+                    {!event.isFree && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button variant="ghost" size="icon" onClick={() => onVerify?.(event.id)}>
+                            <QrCode className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Verify Tickets</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    )}
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="ghost" size="icon" onClick={() => onEdit?.(event.id)}>
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Edit Event</p>
+                      </TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="ghost" size="icon" onClick={() => onViewAttendees?.(event.id)}>
+                          <Users className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>View Attendees</p>
+                      </TooltipContent>
+                    </Tooltip>
+
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="icon">
@@ -156,3 +198,4 @@ export function EventManagementTable({ events, onEdit, onDelete, onViewAttendees
     </div>
   );
 }
+

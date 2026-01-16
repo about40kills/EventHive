@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -28,6 +29,13 @@ interface EventDetailsViewProps {
     isFree?: boolean;
     price?: number;
     currency?: string;
+    ticketTiers?: Array<{
+      name: string;
+      price: number;
+      quantity: number;
+      sold?: number;
+      description?: string;
+    }>;
     organizer: {
       name: string;
       email: string;
@@ -36,7 +44,7 @@ interface EventDetailsViewProps {
   isRegistered?: boolean;
   canRegister?: boolean;
   eventAction: EventAction;
-  onRegister?: () => void;
+  onRegister?: (tickets?: Array<{ name: string; price: number; quantity: number }>) => void;
   onCancelRegistration?: () => void;
   onDeleteEvent?: () => void;
 }
@@ -50,8 +58,21 @@ export function EventDetailsView({
   onCancelRegistration,
   onDeleteEvent,
 }: EventDetailsViewProps) {
+  const [selectedTickets, setSelectedTickets] = useState<{ [key: string]: number }>({});
+
   const spotsLeft = event.capacity - event.registeredCount;
   const isFull = spotsLeft === 0;
+
+  const handleTicketChange = (tierName: string, quantity: number, max: number) => {
+    if (quantity < 0) quantity = 0;
+    if (quantity > max) quantity = max;
+    setSelectedTickets(prev => ({ ...prev, [tierName]: quantity }));
+  };
+
+  const totalSelected = Object.values(selectedTickets).reduce((a, b) => a + b, 0);
+  const totalPrice = event.ticketTiers?.reduce((acc, tier) => {
+    return acc + (tier.price * (selectedTickets[tier.name] || 0));
+  }, 0) || 0;
 
   const renderActionButton = () => {
     switch (eventAction) {
@@ -88,9 +109,31 @@ export function EventDetailsView({
         );
 
       case 'register':
+        const hasTiers = event.ticketTiers && event.ticketTiers.length > 0;
+        const isDisabled = hasTiers && totalSelected === 0;
+
         return (
-          <Button className="w-full" onClick={onRegister} data-testid="button-register">
-            {event.isFree ? 'Register for Event' : `Buy Ticket (${new Intl.NumberFormat('en-US', { style: 'currency', currency: event.currency || 'USD' }).format(event.price || 0)})`}
+          <Button
+            className="w-full"
+            onClick={() => {
+              const tickets = hasTiers
+                ? event.ticketTiers!.map(t => ({
+                  name: t.name,
+                  price: t.price,
+                  quantity: selectedTickets[t.name] || 0
+                })).filter(t => t.quantity > 0)
+                : undefined;
+              onRegister?.(tickets);
+            }}
+            disabled={isDisabled}
+            data-testid="button-register"
+          >
+            {event.isFree
+              ? 'Register for Event'
+              : hasTiers
+                ? `Buy Tickets ${totalPrice > 0 ? `(${new Intl.NumberFormat('en-US', { style: 'currency', currency: event.currency || 'USD' }).format(totalPrice)})` : ''}`
+                : `Buy Ticket (${new Intl.NumberFormat('en-US', { style: 'currency', currency: event.currency || 'USD' }).format(event.price || 0)})`
+            }
           </Button>
         );
 
@@ -214,33 +257,82 @@ export function EventDetailsView({
                 <div className="flex items-start gap-3">
                   <div className="flex-1">
                     <p className="font-medium" data-testid="text-capacity">
-                      {event.registeredCount} / {event.capacity} registered
+                      {event.registeredCount} / {event.capacity >= 1000000 ? '∞' : event.capacity} registered
                     </p>
-                    <p className={`text-sm ${spotsLeft < 10 ? 'text-destructive' : 'text-muted-foreground'}`}>
-                      {spotsLeft} spots remaining
+                    <p className={`text-sm ${spotsLeft < 10 && event.capacity < 1000000 ? 'text-destructive' : 'text-muted-foreground'}`}>
+                      {event.capacity >= 1000000 ? 'Unlimited spots available' : `${spotsLeft} spots remaining`}
                     </p>
                     <div className="w-full bg-muted rounded-full h-2 mt-2">
                       <div
-                        className={`h-2 rounded-full ${(event.registeredCount / event.capacity) >= 0.9
+                        className={`h-2 rounded-full ${(event.registeredCount / event.capacity) >= 0.9 && event.capacity < 1000000
                           ? 'bg-destructive'
-                          : (event.registeredCount / event.capacity) >= 0.7
+                          : (event.registeredCount / event.capacity) >= 0.7 && event.capacity < 1000000
                             ? 'bg-chart-4'
                             : 'bg-primary'
                           }`}
-                        style={{ width: `${(event.registeredCount / event.capacity) * 100}%` }}
+                        style={{ width: `${Math.min((event.registeredCount / event.capacity) * 100, 100)}%` }}
                       />
                     </div>
                   </div>
                 </div>
 
                 {/* Price Display */}
-                <div className="flex items-start gap-3 pt-4 border-t">
-                  <div className="flex-1 flex justify-between items-center">
-                    <span className="font-medium text-lg">Price</span>
-                    <span className="text-2xl font-bold text-primary">
-                      {event.isFree ? 'Free' : `${new Intl.NumberFormat('en-US', { style: 'currency', currency: event.currency || 'USD' }).format(event.price || 0)}`}
-                    </span>
-                  </div>
+                <div className="pt-4 border-t">
+                  {event.ticketTiers && event.ticketTiers.length > 0 ? (
+                    <div className="space-y-4">
+                      <h3 className="font-semibold text-lg">Select Tickets</h3>
+                      {event.ticketTiers.map((tier) => (
+                        <div key={tier.name} className="flex flex-col space-y-2 p-3 border rounded-lg bg-background/50">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <p className="font-medium">{tier.name}</p>
+                              <p className="text-sm text-muted-foreground">{tier.description}</p>
+                            </div>
+                            <p className="font-bold">
+                              {new Intl.NumberFormat('en-US', { style: 'currency', currency: event.currency || 'USD' }).format(tier.price)}
+                            </p>
+                          </div>
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-muted-foreground">
+                              {(tier.quantity - (tier.sold || 0))} remain
+                            </span>
+                            {canRegister && eventAction === 'register' && (
+                              <div className="flex items-center gap-3">
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  onClick={() => handleTicketChange(tier.name, (selectedTickets[tier.name] || 0) - 1, (tier.quantity - (tier.sold || 0)))}
+                                  disabled={(selectedTickets[tier.name] || 0) <= 0}
+                                >
+                                  -
+                                </Button>
+                                <span className="w-4 text-center">{selectedTickets[tier.name] || 0}</span>
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  onClick={() => handleTicketChange(tier.name, (selectedTickets[tier.name] || 0) + 1, (tier.quantity - (tier.sold || 0)))}
+                                  disabled={(selectedTickets[tier.name] || 0) >= (tier.quantity - (tier.sold || 0))}
+                                >
+                                  +
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex items-start gap-3">
+                      <div className="flex-1 flex justify-between items-center">
+                        <span className="font-medium text-lg">Price</span>
+                        <span className="text-2xl font-bold text-primary">
+                          {event.isFree ? 'Free' : `${new Intl.NumberFormat('en-US', { style: 'currency', currency: event.currency || 'USD' }).format(event.price || 0)}`}
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
