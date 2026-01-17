@@ -46,6 +46,8 @@ export function useRegisterForEvent() {
       });
       queryClient.invalidateQueries({ queryKey: eventKeys.detail(eventId) });
       queryClient.invalidateQueries({ queryKey: eventKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: eventKeys.myEvents() });
+      queryClient.invalidateQueries({ queryKey: eventKeys.attendees(eventId) });
     },
   });
 }
@@ -63,6 +65,27 @@ export function useCancelRegistration() {
       });
       queryClient.invalidateQueries({ queryKey: eventKeys.detail(eventId) });
       queryClient.invalidateQueries({ queryKey: eventKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: eventKeys.myEvents() });
+      queryClient.invalidateQueries({ queryKey: eventKeys.attendees(eventId) });
+    },
+  });
+}
+
+// Verify Ticket Mutation
+export function useVerifyTicket() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (ticketCode: string) => apiClient.verifyTicket(ticketCode),
+    onSuccess: (data) => {
+      // If the backend returns event info, we could invalidate specific event attendees
+      // Currently verifyTicket returns event title/image, not ID. 
+      // But if we could get ID, we would invalidate eventKeys.attendees(id)
+
+      // Since we don't have ID reliably from this response (it returns event title), 
+      // we can't easily invalidate specific event queries.
+      // However, usually verification is done by organizer who might check dashboard later.
+      // If we need strict consistency, we'd need event ID in response.
     },
   });
 }

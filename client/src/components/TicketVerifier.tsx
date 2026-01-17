@@ -6,12 +6,14 @@ import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { useVerifyTicket } from "@/hooks/useRegistrations";
 import { Loader2, CheckCircle2, XCircle, Search, QrCode, Camera } from "lucide-react";
 import { Scanner } from '@yudiel/react-qr-scanner';
 
 export function TicketVerifier() {
     const [, setLocation] = useLocation();
     const { toast } = useToast();
+    const verifyTicketMutation = useVerifyTicket();
     const [code, setCode] = useState("");
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState<any>(null);
@@ -38,7 +40,7 @@ export function TicketVerifier() {
         setResult(null);
 
         try {
-            const data = await apiClient.verifyTicket(ticketCode.trim());
+            const data = await verifyTicketMutation.mutateAsync(ticketCode.trim());
             setResult({
                 status: 'success',
                 data: data
